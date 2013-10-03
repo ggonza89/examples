@@ -5,17 +5,18 @@
     Evaluates any two numbers in a list adding to a value given.
 
 """
+
 class BfException(Exception):
-        """
-        BfException is raised whenever a non-float input or an empty list is
-        encountered.
+    """
+    BfException is raised whenever a non-float input or an empty list is
+    encountered.
 
-        The output of BfException is the string provided when raised.
+    The output of BfException is the string provided when raised.
 
-        """
+    """
 
-        def __str__(self):
-            return ': '.join(self.args)
+    def __str__(self):
+        return ': '.join(self.args)
 
 def bruteforce (list_num, value, evalexpress):
     """
@@ -54,7 +55,7 @@ def bruteforce (list_num, value, evalexpress):
 
     return answers
 
-def dictalg(list_num, value, evalexpress):
+def dictalg(list_num, value):
     """
     this algorithm checks for any two numbers in list that sum to the value
     given by using a dictionary and runs in O(n)
@@ -89,15 +90,14 @@ def dictalg(list_num, value, evalexpress):
 
     for i in range(len(list_num)):
         try:
-            if list_dict.has_key(value - float(list_num[i])):
-                if evalexpress(value-list_num[i], list_num[i], value):
-                    answers.append((value-list_num[i]list_num[i]))
+            temp = value-float(list_num[i])
+            if list_dict.has_key(temp):
+                answers.append((float(list_num[i]), temp))
 
-            list_dict[value-list_num[i]] = list_num[i]
+            list_dict[float(list_num[i])] = 1
         except TypeError:
             raise BfException("Only float values are accepted...")
         except ValueError:
             raise BfException("Cannot evaluate to a character...")
 
     return answers
-
