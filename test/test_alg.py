@@ -5,7 +5,7 @@ and checks them against the value given.
 
 """
 import unittest
-import sys
+import time
 
 
 from intern_alg import bruteforce, dictalg, BfException
@@ -35,15 +35,27 @@ class TestAlg(unittest.TestCase):
         self.assertRaises(BfException, bruteforce, [], 0, self.evalexpress)
         self.assertRaises(BfException, dictalg, [], 0)
 
+        benchmark = time.clock()
         #test code on an unattainable value
         self.assertEqual(bruteforce([0, 0], 1, self.evalexpress), [])
+        benchmark = time.clock() - benchmark
+        print "benchmark of bruteforce algorithm " + str(benchmark) + " seconds"
+        benchmark = time.clock()
         self.assertEqual(dictalg([0, 0], 1), [])
+        benchmark = time.clock() - benchmark
+        print "benchmark of dictionary algorithm " + str(benchmark) + " seconds"
 
+        benchmark = time.clock()
         #test code on attaining a negative value
         self.assertEqual(bruteforce([-1, -2, 3, 4], -3, self.evalexpress),
             [(-1, -2), (-2, -1)])
+        benchmark = time.clock() - benchmark
+        print "benchmark of bruteforce algorithm " + str(benchmark) + " seconds"
+        benchmark = time.clock()
         self.assertEqual(dictalg([-1, -2, 3, 4], -3),
             [(-2.0, -1.0)])
+        benchmark = time.clock() - benchmark
+        print "benchmark of dictionary algorithm " + str(benchmark) + " seconds"
 
         #test code on float values to attain something close to epsilon
         self.assertEqual(bruteforce([1.001, -1.00, 3.45, 3.5678], 0.001,
@@ -60,8 +72,13 @@ class TestAlg(unittest.TestCase):
         self.assertEqual(bruteforce([4, 1.0001, 1, 2, 4, 0], 2.0000,
             self.evalexpress), [(1.0001, 1), (1, 1.0001),
             (1, 1), (2, 0), (0, 2)])
-        self.assertEqual(dictalg([4, 1.0001, 1, 2, 4, .0001], 2.0001), [(0.0001
+
+        #test dictalg for multiple answers, first one doesn't recognize that
+        #1.0001 + 1 = 2.0001 probably just a float thing
+        self.assertEqual(dictalg([4, 1.0001, 1, 2, 4, 0.0001], 2.0001), [(0.0001
             , 2)])
+        self.assertEqual(dictalg([5, 5, 10, 0, 8, 2], 10), [(5, 5), (0, 10),
+            (2, 8)])
 
     def test_failure(self):
         """

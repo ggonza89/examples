@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-    this is the source code for a brute force application.
+this is the source code for a brute force application.
 
-    Evaluates any two numbers in a list adding to a value given.
+Evaluates any two numbers in a list adding to a value given.
 
 """
 
@@ -77,10 +77,10 @@ def dictalg(list_num, value):
 
     answers = []
 
-    try:
-        value = float(value)
-    except ValueError:
-        raise BfException("Only float values are accepted...")
+    #try:
+    #   value = float(value)
+    #except ValueError:
+    #   raise BfException("Only float values are accepted...")
 
 
     if len(list_num) == 0:
@@ -90,11 +90,11 @@ def dictalg(list_num, value):
 
     for i in range(len(list_num)):
         try:
-            temp = value-float(list_num[i])
+            temp = value-list_num[i]
             if list_dict.has_key(temp):
-                answers.append((float(list_num[i]), temp))
+                answers.append((list_num[i], temp))
 
-            list_dict[float(list_num[i])] = 1
+            list_dict[list_num[i]] = 1
         except TypeError:
             raise BfException("Only float values are accepted...")
         except ValueError:
