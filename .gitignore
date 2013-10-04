@@ -1,0 +1,4 @@
+# files to ignore in the repository
+
+# ignore objects and archives, anywhere in the tree.
+*.[oa]
