@@ -3,24 +3,24 @@
 export PYTHONPATH=${PYTHONPATH}:`pwd`/src:`pwd`/test
 echo "PYTHONPATH set to $PYTHONPATH"
 
-# function parse_git_branch {
-#     # show branch in shell prompt
-#    ref=$(git symbolic-ref HEAD 2> /dev/null) || return
-#    BRANCH=""${ref#refs/heads/}""
-#    if [ "$BRANCH" == "master" ]; then
-#        echo "($(tput setaf 1)${BRANCH}$(tput sgr0))";
-#    elif [ "$BRANCH" == "develop" ]; then
-#        echo "($(tput setaf 3)${BRANCH}$(tput sgr0))";
-#    elif [[ "$BRANCH" == "feature"* ]]; then
-#         echo "($(tput setaf 2)${BRANCH}$(tput sgr0))";
-#    elif [[ "$BRANCH" == "release"* ]]; then
-#        echo "($(tput setaf 5)${BRANCH}$(tput sgr0))";
-#    else
-#        echo  "(${BRANCH})"
-#    fi
+function parse_git_branch {
+    # show branch in shell prompt
+   ref=$(git symbolic-ref HEAD 2> /dev/null) || return
+   BRANCH=""${ref#refs/heads/}""
+   if [ "$BRANCH" == "master" ]; then
+       echo "($(tput setaf 1)${BRANCH}$(tput sgr0))";
+   elif [ "$BRANCH" == "develop" ]; then
+       echo "($(tput setaf 3)${BRANCH}$(tput sgr0))";
+   elif [[ "$BRANCH" == "feature"* ]]; then
+        echo "($(tput setaf 2)${BRANCH}$(tput sgr0))";
+   elif [[ "$BRANCH" == "release"* ]]; then
+       echo "($(tput setaf 5)${BRANCH}$(tput sgr0))";
+   else
+       echo  "(${BRANCH})"
+   fi
 
-# }
-# export PS1="[\t \W]\$(parse_git_branch) "
+}
+export PS1="[\t \W]\$(parse_git_branch) "
 
 function ns_pip(){
     # install a package from the NS pypi repo
