@@ -77,16 +77,42 @@ void	yyerror(const char *);
 
 Start : Declarations /* put your RHS for this rule here */
 Declarations : Func_declarations | Var_declarations Func_declarations;
+
+//Variable declarations
 Var_declarations : Var_declaration | Var_declaration Var_declarations;
-Var_declaration : Type_specifier TOK_ID TOK_SEMI;
+Var_declaration : Type_specifier TOK_ID TOK_SEMI | Array_declaration;
+Array_declaration : Type_specifier TOK_ID TOK_LSQ TOK_NUM TOK_RSQ TOK_SEMI;
 Type_specifier : TOK_INT | TOK_VOID;
 
+//function declarations
 Func_declarations : Func_declaration | Func_declaration Func_declarations;
-Func_declaration : Type_specifier TOK_ID TOK_LPAREN Params TOK_RPAREN TOK_LBRACE TOK_RBRACE;
-//Compound_stmt:
+Func_declaration : Type_specifier TOK_ID TOK_LPAREN Params TOK_RPAREN Compound_stmt;
+
+//paramaters
 Params : Param_list | TOK_VOID;
-Param_list : Param_list Param | Param;
+Param_list : Param_list TOK_COMMA Param | Param;
 Param : Type_specifier TOK_ID | Type_specifier TOK_ID TOK_LSQ TOK_RSQ;
+
+//statements
+Compound_stmt : TOK_LBRACE Local_declarations Statements TOK_RBRACE;
+Local_declarations : Var_declarations;
+Statements : Statement Statements | Statement;
+Statement : Expression_stmt;
+
+Expression_stmt : Expression TOK_SEMI | TOK_SEMI;
+Expression : Var TOK_ASSIGN Expression | Simple_expression;
+Simple_expression : Additive_expression;
+Additive_expression : Additive_expression Add_op Term | Term;
+
+Term : Term Mult_op Factor | Factor;
+Mult_op : TOK_MULT | TOK_DIV;
+Add_op : TOK_PLUS | TOK_MINUS;
+Factor : TOK_LPAREN Simple_expression TOK_RPAREN | Var | TOK_NUM | Call;
+Var : TOK_ID | TOK_ID TOK_LSQ Simple_expression TOK_RSQ;
+
+Call : TOK_ID TOK_LPAREN Args TOK_RPAREN;
+Args : /* empty */ | Args_list ;
+Args_list : Args_list TOK_COMMA Simple_expression | Simple_expression;
 
 /* note that the rule ends with a semicolon */
 %%
