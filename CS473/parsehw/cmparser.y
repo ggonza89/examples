@@ -8,8 +8,8 @@
 /* external function prototypes */
 extern int yylex();
 extern int initLex(int ,  char **);
- 
-    
+
+
 
 /* external global variables */
 
@@ -17,7 +17,7 @@ extern int		yydebug;
 extern int		yylineno;
 
 
-/* function prototypes */ 
+/* function prototypes */
 void	yyerror(const char *);
 
 /* global variables */
@@ -31,15 +31,43 @@ void	yyerror(const char *);
 /* Your token names must match Project 1 */
 /* The file cmparser.tab.h was gets generated here */
 
-%token TOK_ELSE 
+%token TOK_ERROR
+%token TOK_ELSE
+%token TOK_IF
+%token TOK_RETURN
+%token TOK_VOID
+%token TOK_INT
+%token TOK_WHILE
+%token TOK_PLUS
+%token TOK_MINUS
+%token TOK_MULT
+%token TOK_DIV
+%token TOK_LT
+%token TOK_LE
+%token TOK_GT
+%token TOK_GE
+%token TOK_EQ
+%token TOK_NE
+%token TOK_ASSIGN
+%token TOK_SEMI
+%token TOK_COMMA
+%token TOK_LPAREN
+%token TOK_RPAREN
+%token TOK_LSQ
+%token TOK_RSQ
+%token TOK_LBRACE
+%token TOK_RBRACE
+%token TOK_NUM
+%token TOK_ID
 
 /* associativity and precedence */
 /* specify operator precedence (taken care of by grammar) and associatity here --uncomment */
 
-//%left 
-//%right 
-
-//%nonassoc 
+/*%right '='
+%left '!=' '=='
+%nonassoc '>=' '<=' '>' '<'
+%left '-' '+'
+%left '/' '*'*/
 
 %nonassoc error
 
@@ -47,11 +75,20 @@ void	yyerror(const char *);
 %%
 
 
-Start	: /* put your RHS for this rule here */
-        {
-        }
-	
-  ; /* note that the rule ends with a semicolon */
+Start : Declarations /* put your RHS for this rule here */
+Declarations : Func_declarations | Var_declarations Func_declarations;
+Var_declarations : Var_declaration | Var_declaration Var_declarations;
+Var_declaration : Type_specifier TOK_ID TOK_SEMI;
+Type_specifier : TOK_INT | TOK_VOID;
+
+Func_declarations : Func_declaration | Func_declaration Func_declarations;
+Func_declaration : Type_specifier TOK_ID TOK_LPAREN Params TOK_RPAREN TOK_LBRACE TOK_RBRACE;
+//Compound_stmt:
+Params : Param_list | TOK_VOID;
+Param_list : Param_list Param | Param;
+Param : Type_specifier TOK_ID | Type_specifier TOK_ID TOK_LSQ TOK_RSQ;
+
+/* note that the rule ends with a semicolon */
 %%
 void yyerror (char const *s) {
        fprintf (stderr, "Line %d: %s\n", yylineno, s);
@@ -66,7 +103,7 @@ int main(int argc, char **argv){
     return;
 #else
     yyparse();
-    
+
 #endif
-    
-} 
+
+}

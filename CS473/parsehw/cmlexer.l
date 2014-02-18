@@ -108,7 +108,7 @@ while { return TOK_WHILE; }
 void printToken(int token, char *str)
 {
 /* Print the line number, token name and matched lexeme
-   -- one per line without any additional characters exactly as below */ 
+   -- one per line without any additional characters exactly as below */
 /* Example  13:TOK_INT: 37*/
 
     switch(token)
@@ -203,7 +203,7 @@ void printToken(int token, char *str)
 
 int gettok(void){
     int currentToken;
-    
+
     currentToken=yylex();
     if (currentToken == 0) { // means EOF}
             return 0;
@@ -218,7 +218,7 @@ int gettok(void){
 
 int initLex(int argc, char **argv){
 
-    
+
    if ( argc > 1 )
        yyin = fopen( argv[1], "r" );
    else
@@ -226,4 +226,4 @@ int initLex(int argc, char **argv){
 
   // while (gettok() !=0) ; //gettok returns 0 on EOF
   //  return;
-} 
+}
