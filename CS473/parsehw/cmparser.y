@@ -71,16 +71,18 @@ void	yyerror(const char *);
 %%
 
 
-Start : Declarations /* put your RHS for this rule here */
-Declarations : Declarations Declaration | Declaration;
-Declaration : Var_declaration | Func_declaration;
+Start : Declaration /* put your RHS for this rule here */
+//Declarations : Declarations Declaration | Declaration;
+Declaration : Var_declarations Func_declarations;
 
 //Variable declarations
+Var_declarations : Var_declarations Var_declaration | ;
 Var_declaration : Type_specifier TOK_ID TOK_SEMI | Array_declaration;
-Array_declaration : Type_specifier TOK_ID TOK_LSQ TOK_NUM TOK_RSQ TOK_SEMI;
+Array_declaration : Type_specifier TOK_ID TOK_LSQ Additive_expression TOK_RSQ TOK_SEMI;
 Type_specifier : TOK_INT | TOK_VOID;
 
 //function declarations
+Func_declarations: Func_declaration Func_declarations | Func_declaration;
 Func_declaration : Type_specifier TOK_ID TOK_LPAREN Params TOK_RPAREN Compound_stmt;
 
 //paramaters
@@ -130,7 +132,7 @@ int main(int argc, char **argv){
 
 #ifdef YYLLEXER
    while (gettok() !=0) ; //gettok returns 0 on EOF
-    return;
+    return ;
 #else
     yyparse();
 
