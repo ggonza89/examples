@@ -78,7 +78,7 @@ Declaration : Var_declarations Func_declarations;
 //Variable declarations
 Var_declarations : Var_declarations Var_declaration | ;
 Var_declaration : Type_specifier TOK_ID TOK_SEMI | Array_declaration;
-Array_declaration : Type_specifier TOK_ID TOK_LSQ TOK_NUM TOK_RSQ TOK_SEMI;
+Array_declaration : Type_specifier TOK_ID TOK_LSQ Additive_expression TOK_RSQ TOK_SEMI;
 Type_specifier : TOK_INT | TOK_VOID;
 
 //function declarations

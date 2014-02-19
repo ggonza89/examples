@@ -17,7 +17,8 @@ void main (int hello, int y) {
     }
 
     if( hello > 0 )
-        return 0;
+        if(shootme)
+            return 1;
     else
         return 0;
 
