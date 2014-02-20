@@ -198,10 +198,10 @@ int main(int argc, char** argv)
 
     }
 
-    // char hostname[128];
-    // gethostname(hostname, sizeof hostname);
+    char hostname[128];
+    gethostname(hostname, sizeof hostname);
 
-    char * hostname = "127.0.0.1";
+    // char * hostname = "127.0.0.1";
 
     struct hostent *he;
     struct in_addr **addr_list;
@@ -316,7 +316,8 @@ int main(int argc, char** argv)
             close(sock);
             return 1;
         }
-        // printf("%d\n",data_elapsed);
+
+        printf("%d\n",data_sent);
         data_elapsed += data_sent;
 
         if (munmap ((void*)data, sb.st_size) < 0) {
@@ -326,9 +327,9 @@ int main(int argc, char** argv)
 
         }
 
-        CS450Header * acknowledgement;
+        CS450Header acknowledgement;
 
-        if(recv(sock,acknowledgement,sizeof(CS450Header),0) <= 0) {
+        if(recv(sock,&acknowledgement,sizeof(CS450Header),0) <= 0) {
 
             fprintf(stderr,"ack not received.\n");
             close(sock);
@@ -345,7 +346,7 @@ int main(int argc, char** argv)
         printf("Round trip time: %f\n", rtt);
         avg_response_rate += rtt;
 
-        if(!acknowledgement->persistent)
+        if(!acknowledgement.persistent)
             break;
 
     }
