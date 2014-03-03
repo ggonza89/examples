@@ -17,18 +17,10 @@ int main()
     symInsert("BBBB", typ, 11);
     symInsert("counter", typ, 12);
 
-    // the following code must return the entry created above
+    // // the following code must return the entry created above
     ElementPtr s;
     s = symLookup("BBBB");
-
     // printElement(s);
-    // printf("%d\n", s->key);
-    // s = symLookup("AaAa");
-    // printElement(s);
-    // printf("%d\n", s->key);
-    // s = symLookup("hello");
-    // printElement(s);
-    // printf("%d\n", s->key);
 
     // Entering a new scope
     if(!enterScope()) {
@@ -42,6 +34,8 @@ int main()
     typ1->dimension = 20;
 
     symInsert("carray", typ1, 13);
+    s = symLookup("carray");
+
     // the following code must return the entry created above
     TypePtr typ2 = (TypePtr)malloc(sizeof(Type));
     typ2->kind = ARRAY;
@@ -52,10 +46,8 @@ int main()
     s = symLookup("counter");
     printElement(s);
     leaveScope();
-    //This must return symbol table entry for counter on line  10
+    //This must return symbol table entry for counter on line  12
     s = symLookup("counter");
-    printf("Found element in scope %d\n", s->scope);
     printElement(s);
 
 }
-

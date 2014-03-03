@@ -61,6 +61,8 @@ ElementPtr		symLookup(char *);
 ElementPtr		symInsert(char *, struct type * , int );
 int			enterScope();
 void			leaveScope();
+void printElement(ElementPtr);
+void printSymbolTable(SymbolTablePtr);
 
 
 #endif

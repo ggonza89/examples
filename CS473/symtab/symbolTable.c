@@ -25,7 +25,6 @@ int		initSymbolTable() {
     symbolStackTop->symbolTablePtr = (SymbolTablePtr)malloc(sizeof(SymbolTable));
     if(symbolStackTop->symbolTablePtr == NULL)
         return 0;
-
     // previousScope ptr should be NULL to indicate global scope
     symbolStackTop->prevScope = NULL;
     scopeDepth = 0;
@@ -51,7 +50,7 @@ int hash(char *id) {
 // Look up a given entry
 ElementPtr		symLookup(char *name) {
 
-    int key = hash(name)%32;
+    int key = abs(hash(name))%32;
 
     SymbolTableStackEntryPtr previousScope;
     HashTableEntry temp;
@@ -61,24 +60,13 @@ ElementPtr		symLookup(char *name) {
     while(previousScope != NULL) {
 
         temp = previousScope->symbolTablePtr->hashTable[key];
-
-        if(temp != NULL) {
+        // loop through all the elements with same hash
+        while(temp != NULL) {
 
             if(strcmp(temp->id, name) == 0)
                 return temp;
-            // loop through all the elements with same hash
-            while(strcmp(temp->id, name) != 0) {
-
-                if(temp->next != NULL)
-                    temp = temp->next;
-                else {
-
-                    temp = NULL;
-                    break;
-
-                }
-
-            }
+            else
+                temp = temp->next;
 
         }
 
@@ -86,7 +74,7 @@ ElementPtr		symLookup(char *name) {
 
     }
 
-    return temp;
+    return NULL;
 
 }
 
@@ -100,7 +88,7 @@ ElementPtr		symInsert(char *name, struct type *type, int line) {
     if(newElement == NULL)
         return NULL;
 
-    newElement->key = abs(hash(name)%32);
+    newElement->key = abs(hash(name))%32;
     newElement->id = name;
     newElement->linenumber = line;
     newElement->scope = scopeDepth;
@@ -109,14 +97,12 @@ ElementPtr		symInsert(char *name, struct type *type, int line) {
     // if(newElement->stype->dimension > 0)
     //     printf("Array %s dimension: %d", newElement->id, newElement->stype->dimension);
 
-    HashTableEntry *hashtable;
-    hashtable = symbolStackTop->symbolTablePtr->hashTable;
-    if(hashtable[newElement->key] == NULL)
-        hashtable[newElement->key] = newElement;
+    HashTableEntry temp;
+    temp = symbolStackTop->symbolTablePtr->hashTable[newElement->key];
+    if(temp == NULL)
+        symbolStackTop->symbolTablePtr->hashTable[newElement->key] = newElement;
     else {
 
-        HashTableEntry temp;
-        temp = hashtable[newElement->key];
         while(temp->next != NULL)
             temp = temp->next;
 
@@ -192,6 +178,7 @@ void			leaveScope() {
     free(temp->symbolTablePtr);
     free(temp);
     scopeDepth--;
+
 }
 
 
@@ -200,13 +187,29 @@ void printElement(ElementPtr symelement) {
     if (symelement != NULL) {
         printf("Line %d: %s\n", symelement->linenumber,symelement->id);
     }
-    else printf("Wrong call! symbol table entry NULL");
+    else printf("Wrong call! symbol table entry NULL\n");
+}
+
+void printElements(HashTableEntry entry) {
+
+    if(entry == NULL)
+        return;
+
+    printElements(entry->next);
+    printElement(entry);
+
 }
 
 //should traverse through the entire symbol table and print it
 // must use the printElement function given above
 void printSymbolTable(SymbolTablePtr symtable) {
 
+    int i;
+    for(i=0; i < MAXHASHSIZE; i++) {
 
+        if(symtable->hashTable[i] != NULL)
+            printElements(symtable->hashTable[i]);
+
+    }
 
 }
