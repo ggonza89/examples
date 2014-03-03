@@ -169,6 +169,13 @@ void freeElements(HashTableEntry * hashtable) {
 // This should modify top and change scope depth
 void			leaveScope() {
 
+    if(scopeDepth == 0) {
+
+        printf("Depth already at global.\n");
+        return;
+
+    }
+
     SymbolTableStackEntryPtr temp;
     temp = symbolStackTop;
 

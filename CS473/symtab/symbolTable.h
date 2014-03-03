@@ -64,5 +64,4 @@ void			leaveScope();
 void printElement(ElementPtr);
 void printSymbolTable(SymbolTablePtr);
 
-
 #endif
