@@ -50,7 +50,7 @@ int hash(char *id) {
 // Look up a given entry
 ElementPtr		symLookup(char *name) {
 
-    int key = abs(hash(name))%32;
+    int key = abs(hash(name))%MAXHASHSIZE;
 
     SymbolTableStackEntryPtr previousScope;
     HashTableEntry temp;
@@ -88,7 +88,7 @@ ElementPtr		symInsert(char *name, struct type *type, int line) {
     if(newElement == NULL)
         return NULL;
 
-    newElement->key = abs(hash(name))%32;
+    newElement->key = abs(hash(name))%MAXHASHSIZE;
     newElement->id = name;
     newElement->linenumber = line;
     newElement->scope = scopeDepth;
