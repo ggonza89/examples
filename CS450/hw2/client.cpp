@@ -12,24 +12,7 @@ char * printIP(unsigned char *ip) {
     char * ipAddress;
     sprintf(ipAddress, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
 
-    printf("%s\n", ipAddress);
-
     return ipAddress;
-
-}
-
-void to_IP(uint32_t ipAddress) {
-
-    uint8_t  octet[4];
-    //string ret = "";
-    int x;
-    for (x = 0; x < 4; x++)
-    {
-        octet[x] = (ipAddress >> (x * 8)) & (uint8_t)-1;
-        printf("%d", octet[x]);
-        if (x != 3) printf(".");
-    }
-    // return ret;
 
 }
 
@@ -37,11 +20,7 @@ void printHeader(CS450Header header) {
 
     printf("Version %d UIN %ld HW_number %d transactionNumber %d\n",
         header.version,header.UIN,header.HW_number, header.transactionNumber);
-    printf("User ID %s from IP ", header.ACCC);
-    to_IP(header.from_IP);
-    printf(":%d to IP ", ntohs(header.from_Port));
-    to_IP(header.to_IP);
-    printf(":%d\n", ntohs(header.to_Port));
+    printf("User ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, printIP((unsigned char *)header.from_IP), ntohs(header.from_Port), printIP((unsigned char *)header.to_IP), ntohs(header.to_Port));
     if(header.packetType == 2)
         printf("Data received: %lu file saved: %d\n",
             header.nbytes, header.saveFile);
@@ -71,34 +50,44 @@ char * getIpAddress(char * host) {
 
 }
 
+Packet * makePacket(char * data, int transactionNumber, char * relay, char * hostip, string filename, uint16_t from_Port, uint16_t to_Port, int packetType, int saveFile, int nTotalBytes, int nbytes) {
+
+    Packet * packet;
+    strcpy(packet->data, data);
+
+    packet->header.version = 6;
+    packet->header.UIN = 665799950;
+    packet->header.HW_number = 2;
+    packet->header.transactionNumber = 1;
+    strcpy(packet->header.ACCC, "ggonza20");
+    inet_pton(AF_INET, relay, &packet->header.to_IP);
+    // printf("%s\n", printIP((unsigned char *)packet->header.to_IP));
+
+    inet_pton(AF_INET, hostip, &packet->header.from_IP);
+    packet->header.from_Port = from_Port;
+    packet->header.to_Port = to_Port;
+    strcpy(packet->header.filename, filename.c_str());
+    packet->header.packetType = 1;
+    packet->header.saveFile = saveFile;
+    packet->header.nbytes = nbytes;
+    packet->header.nTotalBytes = nTotalBytes;
+
+    return packet;
+
+}
+
 int sendPacket(int relay_sock, char * data, int8_t saveFile, struct sockaddr_in servaddr, struct sockaddr_in myaddr, string filename, char * relay, int datasize) {
 
     char hostname[128];
     gethostname(hostname, sizeof(hostname));
     char * hostip = getIpAddress(hostname);
     hostip = printIP((unsigned char *)hostip);
-    // strcpy(hostname, getIpAddress(hostname));
-    // printf("%s\n", hostip);
     unsigned int servlen = sizeof(servaddr);
-    Packet packet;
-    strcpy(packet.data, data);
+    Packet * packet;
 
-    packet.header.version = 6;
-    packet.header.UIN = 665799950;
-    packet.header.HW_number = 2;
-    packet.header.transactionNumber = 1;
-    strcpy(packet.header.ACCC, "ggonza20");
-    inet_pton(AF_INET, relay, &packet.header.to_IP);
-    inet_pton(AF_INET, hostip, &packet.header.from_IP);
-    packet.header.from_Port = myaddr.sin_port;
-    packet.header.to_Port = servaddr.sin_port;
-    strcpy(packet.header.filename, filename.c_str());
-    packet.header.packetType = 1;
-    packet.header.saveFile = saveFile;
-    packet.header.nbytes = datasize;
-    packet.header.nTotalBytes = datasize;
+    packet = makePacket(data, 1, relay, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, datasize, datasize);
 
-    printHeader(packet.header);
+    printHeader(packet->header);
 
     if(sendto(relay_sock, &packet, PacketSize, 0, (struct sockaddr *)&
         servaddr, servlen) < 0) {
@@ -132,6 +121,12 @@ int main(int argc, char ** argv) {
         relay = "127.0.0.1";
         relay_port = "54323";
         // relay = "none";
+
+    }
+    else if(argc == 2) {
+
+        relay = argv[1];
+        relay_port = "54323";
 
     }
     else if(argc == 3) {

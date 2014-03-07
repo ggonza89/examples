@@ -15,18 +15,12 @@
 
 using namespace std;
 
-void to_IP(uint32_t ipAddress) {
+char * printIP(unsigned char *ip) {
 
-    uint8_t  octet[4];
-    //string ret = "";
-    int x;
-    for (x = 0; x < 4; x++)
-    {
-        octet[x] = (ipAddress >> (x * 8)) & (uint8_t)-1;
-        printf("%d", octet[x]);
-        if (x != 3) printf(".");
-    }
-    // return ret;
+    char * ipAddress;
+    sprintf(ipAddress, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+
+    return ipAddress;
 
 }
 
@@ -34,16 +28,12 @@ void printHeader(CS450Header header) {
 
     printf("Version %d UIN %ld HW_number %d transactionNumber %d\n",
         header.version,header.UIN,header.HW_number, header.transactionNumber);
-    printf("User ID %s from IP ", header.ACCC);
-    to_IP(header.from_IP);
-    printf(":%d to IP ", ntohs(header.from_Port));
-    to_IP(header.to_IP);
-    printf(":%d\n", ntohs(header.to_Port));
+    printf("User ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, printIP((unsigned char *)header.from_IP), ntohs(header.from_Port), printIP((unsigned char *)header.to_IP), ntohs(header.to_Port));
     if(header.packetType == 2)
-        printf("Data received %lu file saved %d\n",
+        printf("Data received: %lu file saved: %d\n",
             header.nbytes, header.saveFile);
     else
-        printf("Data sending %lu saveFile %d\n",
+        printf("Data sending: %lu saveFile: %d\n",
             header.nbytes, header.saveFile);
 
 }
