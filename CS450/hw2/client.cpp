@@ -7,6 +7,19 @@ void usage() {
     exit(1);
 }
 
+char * printIP(uint32_t ip) {
+
+    char * ipAddress;
+    ipAddress = (char *)calloc(INET_ADDRSTRLEN, sizeof(char));
+
+    inet_ntop(AF_INET, &ip, ipAddress, INET_ADDRSTRLEN);
+
+    // printf("%s\n", ipAddress);
+
+    return ipAddress;
+
+}
+
 char * printIP(unsigned char *ip) {
 
     char * ipAddress;
@@ -20,13 +33,19 @@ void printHeader(CS450Header header) {
 
     printf("Version %d UIN %ld HW_number %d transactionNumber %d\n",
         header.version,header.UIN,header.HW_number, header.transactionNumber);
-    printf("User ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, printIP((unsigned char *)header.from_IP), ntohs(header.from_Port), printIP((unsigned char *)header.to_IP), ntohs(header.to_Port));
+    char * to_IP, *from_IP;
+    from_IP = printIP(header.from_IP);
+    to_IP = printIP(header.to_IP);
+    printf("User ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, from_IP, ntohs(header.from_Port), to_IP, ntohs(header.to_Port));
     if(header.packetType == 2)
         printf("Data received: %lu file saved: %d\n",
             header.nbytes, header.saveFile);
     else
         printf("Data sending: %lu saveFile: %d\n",
             header.nbytes, header.saveFile);
+
+    free(from_IP);
+    free(to_IP);
 
 }
 
@@ -76,7 +95,7 @@ Packet * makePacket(char * data, int transactionNumber, char * relay, char * hos
 
 }
 
-int sendPacket(int relay_sock, char * data, int8_t saveFile, struct sockaddr_in servaddr, struct sockaddr_in myaddr, string filename, char * relay, int datasize) {
+int sendPacket(int relay_sock, char * data, int8_t saveFile, struct sockaddr_in servaddr, struct sockaddr_in myaddr, string filename, char * relay, int datasize, int transactionNumber) {
 
     char hostname[128];
     gethostname(hostname, sizeof(hostname));
@@ -85,15 +104,15 @@ int sendPacket(int relay_sock, char * data, int8_t saveFile, struct sockaddr_in 
     unsigned int servlen = sizeof(servaddr);
     Packet * packet;
 
-    packet = makePacket(data, 1, relay, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, datasize, datasize);
+    packet = makePacket(data, transactionNumber, relay, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, datasize, datasize);
 
     printHeader(packet->header);
 
-    if(sendto(relay_sock, &packet, PacketSize, 0, (struct sockaddr *)&
+    if(sendto(relay_sock, packet, PacketSize, 0, (struct sockaddr *)&
         servaddr, servlen) < 0) {
 
         perror("sendto failed");
-        return 1;
+        return 0;
 
     }
 
@@ -101,12 +120,36 @@ int sendPacket(int relay_sock, char * data, int8_t saveFile, struct sockaddr_in 
     if(recvfrom(relay_sock, &acknowledgment, PacketSize, 0, (struct sockaddr *)&servaddr, &servlen) < 0) {
 
         printf("No acknowledgment received.");
-        return 1;
+        return 0;
 
     }
 
     printHeader(acknowledgment.header);
-    return 0;
+    return datasize;
+
+}
+
+int sendPackets(int relay_sock, char * data, int8_t saveFile, struct sockaddr_in servaddr, struct sockaddr_in myaddr, string filename, char * relay, int nTotalBytes) {
+
+    int sent_accum = 0, data_sent = 0, transactionNumber = 0;
+    char * block_data;
+    while(sent_accum < nTotalBytes) {
+
+        block_data = (char *)calloc(BLOCKSIZE-sent_accum, sizeof(char));
+        // break data into BLOCKSIZE pieces
+        strncpy((data+sent_accum), block_data, BLOCKSIZE-sent_accum);
+
+        printf("size of data: %d\n", strlen(block_data));
+
+        // data_sent = sendPacket(relay_sock, block_data, saveFile, servaddr, myaddr, filename, relay, BLOCKSIZE, transactionNumber);
+        // if(data_sent == 0)
+            //resend data
+
+        free(block_data);
+        sent_accum += data_sent;
+        ++transactionNumber;
+
+    }
 
 }
 
@@ -243,15 +286,10 @@ int main(int argc, char ** argv) {
 
         // make packet
         cout << sb.st_size << endl;
-        if(sb.st_size <= BLOCKSIZE) {
-
-            // make function that sends the one piece and waits for ack
-            sendPacket(relay_sock, data, saveFile, servaddr, myaddr, filename, relay, sb.st_size);
-
-        }
-        // else
-            // sendPackets(); // function that sends a piece at a time
-            // ;
+        if(sb.st_size <= BLOCKSIZE)
+            sendPacket(relay_sock, data, saveFile, servaddr, myaddr, filename, relay, sb.st_size, 1);
+        else
+            sendPackets(relay_sock, data, saveFile, servaddr, myaddr, filename, relay, sb.st_size);
 
     // }
 
