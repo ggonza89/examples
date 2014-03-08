@@ -9,3 +9,4 @@ server: server.cpp
 clean: client server
 	rm client
 	rm server
+	rm -rf client.dSYM server.dSYM
