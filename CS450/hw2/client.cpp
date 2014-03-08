@@ -9,29 +9,12 @@ void usage() {
 
 char * printIP(uint32_t ip) {
 
-<<<<<<< HEAD
-    uint8_t  octet[4];
-    char * ipAddress;
-    int x;
-    for (x = 0; x < 4; x++) {
-
-        octet[x] = (ip >> (x * 8)) & (uint8_t)-1;
-        sprintf(ipAddress,"%s%d", ipAddress, octet[x]);
-
-        if (x != 3)
-            sprintf(ipAddress, "%s.", ipAddress);
-
-    }
-
-    printf("%s\n", ipAddress);
-=======
     char * ipAddress;
     ipAddress = (char *)calloc(INET_ADDRSTRLEN, sizeof(char));
 
     inet_ntop(AF_INET, &ip, ipAddress, INET_ADDRSTRLEN);
 
     // printf("%s\n", ipAddress);
->>>>>>> 16a3c54f3a931b1ce2c970458411af54575d178c
 
     return ipAddress;
 
@@ -39,10 +22,9 @@ char * printIP(uint32_t ip) {
 
 char * printIP(unsigned char *ip) {
 
-
     char * ipAddress;
     sprintf(ipAddress, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-    printf("%s\n", ipAddress);
+
     return ipAddress;
 
 }
@@ -80,7 +62,7 @@ char * getIpAddress(char * host) {
 
     }
 
-    // printf("Ip address of host %s\n", host);
+    printf("Ip address of host %s\n", host);
     // printIP((unsigned char*)hp->h_addr_list[0]);
 
     return hp->h_addr_list[0];
@@ -113,19 +95,18 @@ Packet * makePacket(char * data, int transactionNumber, char * relay, char * hos
 
 }
 
-
 int sendPacket(int relay_sock, char * data, int8_t saveFile, struct sockaddr_in servaddr, struct sockaddr_in myaddr, string filename, char * relay, int datasize, int transactionNumber) {
 
     char hostname[128];
     gethostname(hostname, sizeof(hostname));
     char * hostip = getIpAddress(hostname);
     hostip = printIP((unsigned char *)hostip);
-    printf("%s\n", hostip);
     unsigned int servlen = sizeof(servaddr);
+    Packet * packet;
 
     packet = makePacket(data, transactionNumber, relay, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, datasize, datasize);
 
-    printHeader(packet.header);
+    printHeader(packet->header);
 
     if(sendto(relay_sock, packet, PacketSize, 0, (struct sockaddr *)&
         servaddr, servlen) < 0) {
@@ -295,7 +276,7 @@ int main(int argc, char ** argv) {
 
         }
 
-        cout << "Would you like to save file (" + filename +  ") to server (yes/no)? ";
+        cout << "Would you like to save file (" + filename +  ") to server (yes/no)?";
         getline(cin, input);
 
         if(!input.compare("yes"))
@@ -303,6 +284,8 @@ int main(int argc, char ** argv) {
         else
             saveFile = 0;
 
+        // make packet
+        cout << sb.st_size << endl;
         if(sb.st_size <= BLOCKSIZE)
             sendPacket(relay_sock, data, saveFile, servaddr, myaddr, filename, relay, sb.st_size, 1);
         else
