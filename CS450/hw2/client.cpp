@@ -10,7 +10,7 @@ void usage() {
 char * printIP(uint32_t ip) {
 
     char * ipAddress;
-    ipAddress = (char *)calloc(INET_ADDRSTRLEN, sizeof(char));
+    // ipAddress = (char *)calloc(INET_ADDRSTRLEN, sizeof(char));
 
     inet_ntop(AF_INET, &ip, ipAddress, INET_ADDRSTRLEN);
 
@@ -31,18 +31,17 @@ char * printIP(unsigned char *ip) {
 
 void printHeader(CS450Header header) {
 
-    printf("Version %d UIN %ld HW_number %d transactionNumber %d\n",
+    printf("\tVersion %d UIN %ld HW_number %d transactionNumber %d\n",
         header.version,header.UIN,header.HW_number, header.transactionNumber);
     char * to_IP, *from_IP;
     from_IP = printIP(header.from_IP);
     to_IP = printIP(header.to_IP);
-    printf("User ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, from_IP, ntohs(header.from_Port), to_IP, ntohs(header.to_Port));
-    if(header.packetType == 2)
-        printf("Data received: %lu file saved: %d\n",
-            header.nbytes, header.saveFile);
-    else
-        printf("Data sending: %lu saveFile: %d\n",
-            header.nbytes, header.saveFile);
+    printf("\tUser ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, from_IP, ntohs(header.from_Port), to_IP, ntohs(header.to_Port));
+    if(header.packetType != 2)
+        printf("\tData sending: %lu Size of data: %d saveFile: %d\n",
+            header.nbytes, header.nTotalBytes, header.saveFile);
+
+    printf("\n");
 
     free(from_IP);
     free(to_IP);
@@ -62,22 +61,20 @@ char * getIpAddress(char * host) {
 
     }
 
-    printf("Ip address of host %s\n", host);
+    // printf("Ip address of host %s\n", host);
     // printIP((unsigned char*)hp->h_addr_list[0]);
 
     return hp->h_addr_list[0];
 
 }
 
-Packet * makePacket(char * data, int transactionNumber, char * relay, char * hostip, string filename, uint16_t from_Port, uint16_t to_Port, int packetType, int saveFile, int nTotalBytes, int nbytes) {
+Packet * makePacket(char * relay, char * hostip, string filename, uint16_t from_Port, uint16_t to_Port, int packetType, int saveFile, int nTotalBytes) {
 
     Packet * packet;
-    strcpy(packet->data, data);
 
     packet->header.version = 6;
     packet->header.UIN = 665799950;
     packet->header.HW_number = 2;
-    packet->header.transactionNumber = 1;
     strcpy(packet->header.ACCC, "ggonza20");
     inet_pton(AF_INET, relay, &packet->header.to_IP);
     // printf("%s\n", printIP((unsigned char *)packet->header.to_IP));
@@ -88,23 +85,18 @@ Packet * makePacket(char * data, int transactionNumber, char * relay, char * hos
     strcpy(packet->header.filename, filename.c_str());
     packet->header.packetType = 1;
     packet->header.saveFile = saveFile;
-    packet->header.nbytes = nbytes;
     packet->header.nTotalBytes = nTotalBytes;
 
     return packet;
 
 }
 
-int sendPacket(int relay_sock, char * data, int8_t saveFile, struct sockaddr_in servaddr, struct sockaddr_in myaddr, string filename, char * relay, int datasize, int transactionNumber) {
+int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int datasize, int transactionNumber, Packet * packet) {
 
-    char hostname[128];
-    gethostname(hostname, sizeof(hostname));
-    char * hostip = getIpAddress(hostname);
-    hostip = printIP((unsigned char *)hostip);
+    strcpy(packet->data, data);
+    packet->header.nbytes = datasize;
+    packet->header.transactionNumber = transactionNumber;
     unsigned int servlen = sizeof(servaddr);
-    Packet * packet;
-
-    packet = makePacket(data, transactionNumber, relay, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, datasize, datasize);
 
     printHeader(packet->header);
 
@@ -129,27 +121,31 @@ int sendPacket(int relay_sock, char * data, int8_t saveFile, struct sockaddr_in 
 
 }
 
-int sendPackets(int relay_sock, char * data, int8_t saveFile, struct sockaddr_in servaddr, struct sockaddr_in myaddr, string filename, char * relay, int nTotalBytes) {
+int sendPackets(int relay_sock, char * data, struct sockaddr_in servaddr, Packet * packet) {
 
     int sent_accum = 0, data_sent = 0, transactionNumber = 0;
     char * block_data;
-    while(sent_accum < nTotalBytes) {
+    block_data = (char *)calloc(BLOCKSIZE, sizeof(char));
+    while(sent_accum < strlen(data)) {
 
-        block_data = (char *)calloc(BLOCKSIZE-sent_accum, sizeof(char));
+        memset(block_data, 0, BLOCKSIZE);
         // break data into BLOCKSIZE pieces
-        strncpy((data+sent_accum), block_data, BLOCKSIZE-sent_accum);
+        if(sent_accum == 0)
+            strncpy(block_data, data, BLOCKSIZE);
+        else
+            strncpy(block_data, (data+sent_accum), BLOCKSIZE);
 
-        printf("size of data: %d\n", strlen(block_data));
-
-        // data_sent = sendPacket(relay_sock, block_data, saveFile, servaddr, myaddr, filename, relay, BLOCKSIZE, transactionNumber);
+        data_sent = sendPacket(relay_sock, block_data, servaddr, strlen(block_data), transactionNumber, packet);
         // if(data_sent == 0)
-            //resend data
+        //     resend data
 
-        free(block_data);
         sent_accum += data_sent;
+        printf("DATA SENT: %d\n", data_sent);
         ++transactionNumber;
 
     }
+
+    free(block_data);
 
 }
 
@@ -225,9 +221,6 @@ int main(int argc, char ** argv) {
         exit(1);
     }
 
-    char hostname[128];
-    gethostname(hostname, sizeof(hostname));
-
     string input, filename;
     struct stat sb;
     char * data;
@@ -285,11 +278,19 @@ int main(int argc, char ** argv) {
             saveFile = 0;
 
         // make packet
-        cout << sb.st_size << endl;
+
+        char hostname[128];
+        gethostname(hostname, sizeof(hostname));
+        char * hostip;
+        hostip = getIpAddress(hostname);
+        hostip = printIP((unsigned char *)hostip);
+        Packet * packet;
+        packet = makePacket(relay, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, sb.st_size);
+
         if(sb.st_size <= BLOCKSIZE)
-            sendPacket(relay_sock, data, saveFile, servaddr, myaddr, filename, relay, sb.st_size, 1);
+            sendPacket(relay_sock, data, servaddr, sb.st_size, 1, packet);
         else
-            sendPackets(relay_sock, data, saveFile, servaddr, myaddr, filename, relay, sb.st_size);
+            sendPackets(relay_sock, data, servaddr, packet);
 
     // }
 

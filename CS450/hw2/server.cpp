@@ -40,61 +40,48 @@ char * printIP(unsigned char *ip) {
 
 void printHeader(CS450Header header) {
 
-    printf("Version %d UIN %ld HW_number %d transactionNumber %d\n",
+    printf("\tVersion %d UIN %ld HW_number %d transactionNumber %d\n",
         header.version,header.UIN,header.HW_number, header.transactionNumber);
     char * to_IP, *from_IP;
     from_IP = printIP(header.from_IP);
     to_IP = printIP(header.to_IP);
-    printf("User ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, from_IP, ntohs(header.from_Port), to_IP, ntohs(header.to_Port));
-    if(header.packetType == 2)
-        printf("Data received: %lu file saved: %d\n",
-            header.nbytes, header.saveFile);
-    else
-        printf("Data sending: %lu saveFile: %d\n",
-            header.nbytes, header.saveFile);
+    printf("\tUser ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, from_IP, ntohs(header.from_Port), to_IP, ntohs(header.to_Port));
+    if(header.packetType != 2)
+        printf("\tData sending: %lu Size of data: %d saveFile: %d\n",
+            header.nbytes, header.nTotalBytes, header.saveFile);
+
+    printf("\n");
 
     free(from_IP);
     free(to_IP);
 
 }
 
-void saveFile(char * data, char * filename) {
-
-    char * name = "save_file.txt";
-    ofstream file;
-    file.open(name);
-
-    file << data;
-
-    file.close();
-
-}
-
-int sendAck(CS450Header header, int server_sock, struct sockaddr_in remote_addr, unsigned int addrlen) {
+int sendAck(CS450Header * header, int server_sock, struct sockaddr_in remote_addr, unsigned int addrlen) {
 
     Packet packet;
     //send acknowledgement of file received
     packet.header.version = 6;
-    packet.header.UIN = header.UIN;
-    packet.header.transactionNumber = header.transactionNumber;
+    packet.header.UIN = header->UIN;
+    packet.header.transactionNumber = header->transactionNumber;
     packet.header.ackNumber = 1;
-    uint32_t from_IP = header.to_IP;
-    packet.header.to_IP = header.from_IP;
+    uint32_t from_IP = header->to_IP;
+    packet.header.to_IP = header->from_IP;
     packet.header.from_IP = from_IP;
-    uint16_t from_port = header.to_Port;
-    packet.header.to_Port = header.from_Port;
+    uint16_t from_port = header->to_Port;
+    packet.header.to_Port = header->from_Port;
     packet.header.from_Port = from_port;
     packet.header.nbytes = 0;
     packet.header.nTotalBytes = 0;
-    strcpy(packet.header.filename, header.filename);
+    strcpy(packet.header.filename, header->filename);
     packet.header.HW_number = 2;
     packet.header.packetType = 2;
-    strcpy(packet.header.ACCC, header.ACCC);
+    strcpy(packet.header.ACCC, header->ACCC);
 
     printHeader(packet.header);
 
     memset(&packet.data, 0, sizeof(packet.data));
-    if(sendto(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, addrlen)) {
+    if(sendto(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, addrlen) < 0) {
 
         printf("Ack not sent.");
         return 0;
@@ -103,14 +90,25 @@ int sendAck(CS450Header header, int server_sock, struct sockaddr_in remote_addr,
     else
         return 1;
 
+    // printf("WTF\n");
+
 }
 
-int handlePacket(CS450Header header, char * data, int server_sock, struct sockaddr_in remote_addr, unsigned int addrlen) {
+void handlePacket(CS450Header header, char * data) {
 
-    if(header.saveFile)
-        saveFile(data, header.filename);
+    if(header.saveFile) {
 
-    return sendAck(header, server_sock, remote_addr, addrlen);
+        char * name = "save_file.txt";
+        ofstream file;
+        file.open(name);
+
+        file << data;
+
+        file.close();
+
+        printf("Data of length %d saved to file %s\n", strlen(data), name);
+
+    }
 
 }
 
@@ -176,37 +174,35 @@ int main(int argc, char ** argv) {
         strcpy(data, packet.data);
         data_length = strlen(data);
 
-        printf("Data received: %d\n", data_length);
+        sendAck(&packet.header, server_sock, remote_addr, addrlen);
+        // printf("Data received: %d\n", data_length);
 
         if(packet.header.nTotalBytes == packet.header.nbytes)
-            handlePacket(packet.header, data, server_sock, remote_addr, addrlen);
-        // else {
+            handlePacket(packet.header, data);
+        else {
 
-        //     while(recv_accum < packet.header.nTotalBytes) {
+            recv_accum = data_length;
+            while(recv_accum < packet.header.nTotalBytes) {
 
-        //         data = (char *)calloc(packet.header.nTotalBytes, sizeof(char));
+                recv_count = recvfrom(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, &addrlen);
 
-        //         strcpy((data+data_length), packet.data);
-        //         data_length = strlen(data);
+                printHeader(packet.header);
+                strcpy((data+data_length), packet.data);
+                data_length = strlen(data);
+                // printf("Data received: %d\n", data;
 
-        //         printf("Data received: %d\n", data_length);
+                sendAck(&packet.header, server_sock, remote_addr, addrlen);
 
-        //         //receive rest of packets!!!!!!!!
+                recv_accum += data_length;
 
-        //         // if(packet.header.saveFile)
-        //         //     saveFile(packet.data, packet.header.filename);
+            }
 
+            handlePacket(packet.header, data);
 
-        //         recv_count = recvfrom(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, &addrlen);
+        }
 
-        //         // pthread_t client;
-        //         // pthread_create(&client, 9, handle_client, (void *)sock);
-
-        //     }
-
-        //     handlePacket(packet.header, data);
-
-        // }
+        data_length = 0;
+        free(data);
 
     }
 
