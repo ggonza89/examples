@@ -104,9 +104,10 @@ void handlePacket(CS450Header header, char * data) {
         ofstream file;
         file.open(name);
 
+        printf("WTF!!!\n");
+
         file << data;
 
-        printf("WTF!!!\n");
         file.close();
 
         printf("Data of length %d saved to file %s\n", strlen(data), name);
