@@ -10,7 +10,7 @@ void usage() {
 char * printIP(uint32_t ip) {
 
     char * ipAddress;
-    // ipAddress = (char *)calloc(INET_ADDRSTRLEN, sizeof(char));
+    ipAddress = (char *)calloc(INET_ADDRSTRLEN, sizeof(char));
 
     inet_ntop(AF_INET, &ip, ipAddress, INET_ADDRSTRLEN);
 
