@@ -23,6 +23,7 @@ char * printIP(uint32_t ip) {
 char * printIP(unsigned char *ip) {
 
     char * ipAddress;
+    ipAddress = (char *)calloc(10, sizeof(char));
     sprintf(ipAddress, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
 
     return ipAddress;
@@ -48,7 +49,7 @@ void printHeader(CS450Header header) {
 
 }
 
-char * getIpAddress(char * host) {
+char ** getIpAddress(char * host) {
 
     struct hostent *hp;
     int i;
@@ -61,10 +62,13 @@ char * getIpAddress(char * host) {
 
     }
 
-    // printf("Ip address of host %s\n", host);
-    // printIP((unsigned char*)hp->h_addr_list[0]);
+    // printf("Ip address %s of host %s\n", hp->h_addr_list[0], host);
+    // char * addrlist;
+    // addrlist = printIP((unsigned char *)hp->h_addr_list[0]);
+    // printf("%s\n", addrlist);
+    // free(addrlist);
 
-    return hp->h_addr_list[0];
+    return hp->h_addr_list;
 
 }
 
@@ -72,14 +76,17 @@ Packet * makePacket(char * relay, char * hostip, string filename, uint16_t from_
 
     Packet * packet;
 
+    packet = (Packet *)malloc(PacketSize);
     packet->header.version = 6;
+    printf("WTF0\n");
     packet->header.UIN = 665799950;
     packet->header.HW_number = 2;
     strcpy(packet->header.ACCC, "ggonza20");
     inet_pton(AF_INET, relay, &packet->header.to_IP);
     // printf("%s\n", printIP((unsigned char *)packet->header.to_IP));
-
+    printf("WTF1\n");
     inet_pton(AF_INET, hostip, &packet->header.from_IP);
+    printf("WTF2\n");
     packet->header.from_Port = from_Port;
     packet->header.to_Port = to_Port;
     strcpy(packet->header.filename, filename.c_str());
@@ -216,10 +223,41 @@ int main(int argc, char ** argv) {
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(atoi(relay_port));
     unsigned int servlen = sizeof(servaddr);
-    if (inet_aton(relay, &servaddr.sin_addr)==0) {
-        fprintf(stderr, "inet_aton() failed\n");
-        exit(1);
+    char ** addr_list;
+    char * address;
+    address = relay;
+    int iter = 0;
+    addr_list = getIpAddress(relay);
+    while(inet_aton(address, &servaddr.sin_addr) == 0) {
+
+        try {
+
+            // address = addr_list[iter];
+            address = printIP((unsigned char *)addr_list[iter]);
+            // address
+            printf("Trying address %s of host %s\n", address, relay);
+            ++iter;
+
+        }
+        catch(...) {
+
+            printf("inet_aton() failed on host %s\n", relay);
+            exit(1);
+
+        }
+
     }
+
+    // try {
+
+    //     free(address);
+
+    // }
+    // catch(...) {
+
+    //     ;
+
+    // }
 
     string input, filename;
     struct stat sb;
@@ -281,16 +319,26 @@ int main(int argc, char ** argv) {
 
         char hostname[128];
         gethostname(hostname, sizeof(hostname));
+        char ** hostip_list;
+        hostip_list = getIpAddress(hostname);
         char * hostip;
-        hostip = getIpAddress(hostname);
-        hostip = printIP((unsigned char *)hostip);
+        hostip = printIP((unsigned char *)hostip_list[0]);
+        printf("Host ip: %s Server IP: %s\n", hostip, address);
         Packet * packet;
-        packet = makePacket(relay, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, sb.st_size);
+        printf("WTF\n");
+        packet = makePacket(address, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, sb.st_size);
 
         if(sb.st_size <= BLOCKSIZE)
             sendPacket(relay_sock, data, servaddr, sb.st_size, 1, packet);
         else
             sendPackets(relay_sock, data, servaddr, packet);
+
+        try {
+            free(address);
+        }
+        catch(...) {
+            ;
+        }
 
     // }
 
