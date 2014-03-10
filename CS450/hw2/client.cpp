@@ -164,7 +164,7 @@ int main(int argc, char ** argv) {
 
     if(argc == 1) {
 
-        relay = "127.0.0.1";
+        relay = "localhost";
         relay_port = "54323";
         // relay = "none";
 
