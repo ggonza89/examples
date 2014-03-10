@@ -96,6 +96,8 @@ int sendAck(CS450Header * header, int server_sock, struct sockaddr_in remote_add
 
 void handlePacket(CS450Header header, char * data) {
 
+    printf("WTF!!!!\n");
+
     if(header.saveFile) {
 
         char * name = "save_file.txt";
@@ -104,6 +106,7 @@ void handlePacket(CS450Header header, char * data) {
 
         file << data;
 
+        printf("WTF!!!\n");
         file.close();
 
         printf("Data of length %d saved to file %s\n", strlen(data), name);
