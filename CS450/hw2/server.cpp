@@ -1,14 +1,8 @@
 /*  server.cpp
 
-    This program receives a file from a remote client and sends back an
-    acknowledgement after the entire file has been received.
+    This program receives a file from a remote client and sends back an acknowledgement after each packet has been received.
 
-    Two possible options for closing the connection:
-        (1) Send a close command along with the acknowledgement and then close.
-        (2) Hold the connection open waiting for additional files / commands.
-        The "persistent" field in the header indicates the client's preference.
-
-    Written by Giancarlo Gonzalez (ggonza20) January 2014 for CS 450 HW1
+    Written by Giancarlo Gonzalez (ggonza20) March 2014 for CS 450 HW2
 */
 
 #include "450UtilsUDP.cpp"

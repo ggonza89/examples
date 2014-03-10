@@ -1,4 +1,11 @@
+/*  client.cpp
+
+    This program sends a file to a remote server and, depending on the protocol, waits for an acknowledgement after each packet.
+
+    Written by Giancarlo Gonzalez (ggonza20) March 2014 for CS 450 HW2
+*/
 #include "450UtilsUDP.cpp"
+#include <ctime>
 
 void usage() {
     cout << "Usage:  client [server] [rdt]...\n\tclient [server] [port] [rdt]...\n\tclient [server] [port] [relay] [port] [rdt]...\n";
@@ -11,6 +18,7 @@ int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int dat
     packet->header.nbytes = datasize;
     packet->header.transactionNumber = transactionNumber;
     packet->header.protocol = rdt;
+    packet->header.garbleChance = 50;
 
     if(rdt != 10) {
 
@@ -22,7 +30,7 @@ int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int dat
     }
 
     unsigned int servlen = sizeof(servaddr);
-    printHeader(packet->header);
+    // printHeader(packet->header);
 
     if(sendto(relay_sock, packet, PacketSize, 0, (struct sockaddr *)&
         servaddr, servlen) < 0) {
@@ -46,7 +54,7 @@ int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int dat
             return sendPacket(relay_sock, data, servaddr, datasize, transactionNumber, packet, rdt, sequenceNumber);
 
 
-        printHeader(acknowledgment.header);
+        // printHeader(acknowledgment.header);
 
     }
 
@@ -58,7 +66,10 @@ int sendPackets(int relay_sock, char * data, struct sockaddr_in servaddr, Packet
 
     int sent_accum = 0, data_sent = 0, transactionNumber = 0;
     char * block_data;
+    clock_t start, end;
+    double rtt, avg_response_rate = 0.0;
     block_data = (char *)calloc(BLOCKSIZE, sizeof(char));
+    // printf("%d\n", strlen(data));
     while(sent_accum < strlen(data)) {
 
         memset(block_data, 0, BLOCKSIZE);
@@ -68,14 +79,20 @@ int sendPackets(int relay_sock, char * data, struct sockaddr_in servaddr, Packet
         else
             strncpy(block_data, (data+sent_accum), BLOCKSIZE);
 
+        clock_t start = clock();
         data_sent = sendPacket(relay_sock, block_data, servaddr, strlen(block_data), transactionNumber, packet, rdt, transactionNumber%2);
-
-        printf("sequenceNumber: %d\n", transactionNumber%2);
+        clock_t end = clock();
+        rtt = double(end-start)/CLOCKS_PER_SEC;
+        printf("Round trip time: %f\n", rtt);
+        avg_response_rate += rtt;
 
         sent_accum += data_sent;
         ++transactionNumber;
 
     }
+
+    avg_response_rate /= double(transactionNumber);
+    printf("Average response rate: %f\n", avg_response_rate);
 
     free(block_data);
 
@@ -212,6 +229,7 @@ int main(int argc, char ** argv) {
 
         }
 
+        // data = (char *)malloc(sb.st_size);
         data = (char *)mmap(0, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
 
         if(data == MAP_FAILED) {
@@ -244,12 +262,13 @@ int main(int argc, char ** argv) {
         hostip = printIP((unsigned char *)hostip_list[0]);
         printf("Host ip: %s Server IP: %s\n", hostip, address);
         Packet * packet;
-        packet = makePacket(server, hostip, filename, myaddr.sin_port, htons(atoi(server_port)), 1, saveFile, strlen(data), 0);
+        packet = makePacket(server, hostip, filename, myaddr.sin_port, htons(atoi(server_port)), 1, saveFile, sb.st_size, 0);
 
-        if(sb.st_size <= BLOCKSIZE)
-            sendPacket(relay_sock, data, servaddr, sb.st_size, 0, packet, rdt, 0);
-        else
-            sendPackets(relay_sock, data, servaddr, packet, rdt);
+        // printf("%lld\n", sb.st_size);
+
+        sendPackets(relay_sock, data, servaddr, packet, rdt);
+
+        // free(data);
 
         cout << "Would you like to send another file? ";
         getline(cin, input);
