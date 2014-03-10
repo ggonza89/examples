@@ -78,7 +78,7 @@ int sendAck(CS450Header * header, int server_sock, struct sockaddr_in remote_add
     packet.header.packetType = 2;
     strcpy(packet.header.ACCC, header->ACCC);
 
-    printHeader(packet.header);
+    // printHeader(packet.header);
 
     // memset(&packet.data, 0, sizeof(packet.data));
     if(sendto(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, addrlen) < 0) {
