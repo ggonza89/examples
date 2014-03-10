@@ -30,7 +30,7 @@ int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int dat
     }
 
     unsigned int servlen = sizeof(servaddr);
-    printHeader(packet->header);
+    // printHeader(packet->header);
 
     if(sendto(relay_sock, packet, PacketSize, 0, (struct sockaddr *)&
         servaddr, servlen) < 0) {
@@ -54,7 +54,7 @@ int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int dat
             return sendPacket(relay_sock, data, servaddr, datasize, transactionNumber, packet, rdt, sequenceNumber);
 
 
-        printHeader(acknowledgment.header);
+        // printHeader(acknowledgment.header);
 
     }
 
@@ -79,10 +79,10 @@ int sendPackets(int relay_sock, char * data, struct sockaddr_in servaddr, Packet
         else
             strncpy(block_data, (data+sent_accum), BLOCKSIZE);
 
-        time(&start);
+        start = clock();
         data_sent = sendPacket(relay_sock, block_data, servaddr, strlen(block_data), transactionNumber, packet, rdt, transactionNumber%2);
-        time(&end);
-        rtt = difftime(start, end);
+        end = clock();
+        rtt = double(end-start)/CLOCKS_PER_SEC;
         printf("Round trip time: %f\n", rtt);
         avg_response_rate += rtt;
 
