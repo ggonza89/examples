@@ -177,7 +177,7 @@ int main(int argc, char ** argv) {
 
         data = (char *)calloc(packet.header.nTotalBytes, sizeof(char));
 
-        strncpy(data, packet.data, packet.header.nbytes);
+        strcpy(data, packet.data);
         data_length = strlen(data);
 
         sendAck(&packet.header, server_sock, remote_addr, addrlen);
