@@ -25,7 +25,7 @@ int sendNack(CS450Header * header, int server_sock, struct sockaddr_in remote_ad
     packet = makePacket(to_IP, from_IP, header->filename, header->to_Port, header->from_Port, 2, 0, header->nTotalBytes, 0);
 
     packet->header.transactionNumber = header->transactionNumber;
-    packet->header.ackNumber = 0;
+    packet->header.ackNumber = (-1);
     packet->header.packetType = 2;
 
     printHeader(packet->header);
@@ -57,6 +57,7 @@ int sendAck(CS450Header * header, int server_sock, struct sockaddr_in remote_add
 
     packet->header.transactionNumber = header->transactionNumber;
     packet->header.ackNumber = 1;
+    packet->header.sequenceNumber = header->sequenceNumber;
 
     printHeader(packet->header);
 
@@ -79,18 +80,14 @@ int sendAck(CS450Header * header, int server_sock, struct sockaddr_in remote_add
 
 void handlePacket(CS450Header header, char * data) {
 
-    printf("WTF!!!!\n");
-
     if(header.saveFile) {
 
         char * name;
         name = "server_file.cpp";
         // sprintf(name,, header.filename);
-        printf("%s\n", name);
         ofstream file;
         file.open(name);
 
-        printf("WTF!!!!!!!\n");
         file << data;
 
         file.close();
@@ -162,47 +159,51 @@ int main(int argc, char ** argv) {
         data = (char *)calloc(packet.header.nTotalBytes, sizeof(char));
 
         strncpy(data, packet.data, packet.header.nbytes);
-        // data_length = strlen(data);
 
-        sendAck(&packet.header, server_sock, remote_addr, addrlen);
-        // printf("Data received: %d\n", data_length);
+        if(packet.header.protocol != 10) {
 
-        if(packet.header.nTotalBytes == packet.header.nbytes)
-            handlePacket(packet.header, data);
-        else {
+            dont_handle = calcChecksum((void *)&packet, PacketSize);
+            if(dont_handle == 0)
+                sendAck(&packet.header, server_sock, remote_addr, addrlen);
+            else {
 
-            // recv_accum = data_length;
-            // printf("Data received: %d\n", packet.header.nTotalBytes);
-            while(strlen(data) < packet.header.nTotalBytes) {
+                sendNack(&packet.header, server_sock, remote_addr, addrlen);
+                dont_handle = 1;
 
-                recv_count = recvfrom(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, &addrlen);
+            }
 
-                printHeader(packet.header);
-                strncpy((data+strlen(data)), packet.data, packet.header.nbytes);
-                // data_length = strlen(data);
-                // printf("Length data: %d\n", strlen(data));
+        }
+
+        while(strlen(data) < packet.header.nTotalBytes) {
+
+            recv_count = recvfrom(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, &addrlen);
+
+            printHeader(packet.header);
+
+            if(packet.header.protocol != 10) {
 
                 dont_handle = calcChecksum((void *)&packet, PacketSize);
-                printf("Checksum: %d\n", dont_handle);
-                if(dont_handle == 0)
+                if(dont_handle == 0) {
+
                     sendAck(&packet.header, server_sock, remote_addr, addrlen);
+                    strncpy((data+strlen(data)), packet.data, packet.header.nbytes);
+
+                }
                 else {
 
                     sendNack(&packet.header, server_sock, remote_addr, addrlen);
                     dont_handle = 1;
-                    break;
 
                 }
 
-                // recv_accum = strlen(data);
-                printf("Data received: %d\n", strlen(data));
-
             }
-
-            if(dont_handle == 0)
-                handlePacket(packet.header, data);
+            else
+                strncpy((data+strlen(data)), packet.data, packet.header.nbytes);
 
         }
+
+        if(dont_handle == 0)
+            handlePacket(packet.header, data);
 
         free(data);
 

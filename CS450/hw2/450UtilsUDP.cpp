@@ -6,10 +6,7 @@ char * printIP(uint32_t ip) {
 
     char * ipAddress;
     ipAddress = (char *)calloc(INET_ADDRSTRLEN, sizeof(char));
-
     inet_ntop(AF_INET, &ip, ipAddress, INET_ADDRSTRLEN);
-
-    // printf("%s\n", ipAddress);
 
     return ipAddress;
 
@@ -34,9 +31,9 @@ void printHeader(CS450Header header) {
     to_IP = printIP(header.to_IP);
     printf("\tUser ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, from_IP, ntohs(header.from_Port), to_IP, ntohs(header.to_Port));
     if(header.packetType != 2)
-        printf("\tData sending: %lu Size of data: %d saveFile: %d checksum: %d\n",
-            header.nbytes, header.nTotalBytes, header.saveFile, header.checksum);
-    else if(header.ackNumber == 0)
+        printf("\tData sending: %lu Size of data: %d saveFile: %d checksum: %d sequenceNumber: %d\n",
+            header.nbytes, header.nTotalBytes, header.saveFile, header.checksum, header.sequenceNumber);
+    else if(header.ackNumber == (-1))
         printf("\tThis packet was garbled\n");
 
     printf("\n");
@@ -59,12 +56,6 @@ char ** getIpAddress(char * host) {
 
     }
 
-    // printf("Ip address %s of host %s\n", hp->h_addr_list[0], host);
-    // char * addrlist;
-    // addrlist = printIP((unsigned char *)hp->h_addr_list[0]);
-    // printf("%s\n", addrlist);
-    // free(addrlist);
-
     return hp->h_addr_list;
 
 }
@@ -75,21 +66,19 @@ Packet * makePacket(char * relay, char * hostip, string filename, uint16_t from_
 
     packet = (Packet *)malloc(PacketSize);
     packet->header.version = 6;
-    printf("WTF0\n");
     packet->header.UIN = 665799950;
     packet->header.HW_number = 2;
     strcpy(packet->header.ACCC, "ggonza20");
     inet_pton(AF_INET, relay, &packet->header.to_IP);
-    // printf("%s\n", printIP((unsigned char *)packet->header.to_IP));
-    printf("WTF1\n");
     inet_pton(AF_INET, hostip, &packet->header.from_IP);
-    printf("WTF2\n");
     packet->header.from_Port = from_Port;
     packet->header.to_Port = to_Port;
     strcpy(packet->header.filename, filename.c_str());
     packet->header.packetType = 1;
     packet->header.saveFile = saveFile;
     packet->header.nTotalBytes = nTotalBytes;
+    packet->header.ackNumber = 0;
+    packet->header.sequenceNumber = 0;
 
     return packet;
 

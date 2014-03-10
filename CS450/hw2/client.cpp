@@ -1,20 +1,27 @@
 #include "450UtilsUDP.cpp"
 
 void usage() {
-    cout << "Usage: client [server] [port] [relay] [port]...\nIf any argument is omitted, then all following arguments must also be omitted.\n";
+    cout << "Usage:  client [server] [rdt]...\n\tclient [server] [port] [rdt]...\n\tclient [server] [port] [relay] [port] [rdt]...\n";
     exit(1);
 }
 
-int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int datasize, int transactionNumber, Packet * packet) {
+int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int datasize, int transactionNumber, Packet * packet, int rdt, int sequenceNumber) {
 
     strcpy(packet->data, data);
     packet->header.nbytes = datasize;
     packet->header.transactionNumber = transactionNumber;
-    packet->header.checksum = 0;
-    packet->header.checksum = calcChecksum((void*)packet, PacketSize);
-    unsigned int servlen = sizeof(servaddr);
+    packet->header.protocol = rdt;
 
-    printf("Checksum of packet: %d\n", calcChecksum((void*)packet, PacketSize));
+    if(rdt != 10) {
+
+        packet->header.checksum = 0;
+        packet->header.checksum = calcChecksum((void*)packet, PacketSize);
+        if(rdt == 21)
+            packet->header.sequenceNumber = sequenceNumber;
+
+    }
+
+    unsigned int servlen = sizeof(servaddr);
     printHeader(packet->header);
 
     if(sendto(relay_sock, packet, PacketSize, 0, (struct sockaddr *)&
@@ -25,20 +32,29 @@ int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int dat
 
     }
 
-    Packet acknowledgment;
-    if(recvfrom(relay_sock, &acknowledgment, PacketSize, 0, (struct sockaddr *)&servaddr, &servlen) < 0) {
+    if(rdt != 10) {
 
-        printf("No acknowledgment received.");
-        return 0;
+        Packet acknowledgment;
+        if(recvfrom(relay_sock, &acknowledgment, PacketSize, 0, (struct sockaddr *)&servaddr, &servlen) < 0) {
+
+            printf("No acknowledgment received.");
+            return 0;
+
+        }
+
+        if(packet->header.sequenceNumber != acknowledgment.header.sequenceNumber && rdt == 21)
+            return sendPacket(relay_sock, data, servaddr, datasize, transactionNumber, packet, rdt, sequenceNumber);
+
+
+        printHeader(acknowledgment.header);
 
     }
 
-    printHeader(acknowledgment.header);
     return datasize;
 
 }
 
-int sendPackets(int relay_sock, char * data, struct sockaddr_in servaddr, Packet * packet) {
+int sendPackets(int relay_sock, char * data, struct sockaddr_in servaddr, Packet * packet, int rdt) {
 
     int sent_accum = 0, data_sent = 0, transactionNumber = 0;
     char * block_data;
@@ -52,12 +68,11 @@ int sendPackets(int relay_sock, char * data, struct sockaddr_in servaddr, Packet
         else
             strncpy(block_data, (data+sent_accum), BLOCKSIZE);
 
-        data_sent = sendPacket(relay_sock, block_data, servaddr, strlen(block_data), transactionNumber, packet);
-        // if(data_sent == 0)
-        //     resend data
+        data_sent = sendPacket(relay_sock, block_data, servaddr, strlen(block_data), transactionNumber, packet, rdt, transactionNumber%2);
+
+        printf("sequenceNumber: %d\n", transactionNumber%2);
 
         sent_accum += data_sent;
-        printf("DATA SENT: %d\n", data_sent);
         ++transactionNumber;
 
     }
@@ -71,33 +86,42 @@ int main(int argc, char ** argv) {
     printf("Written by Giancarlo Gonzalez (ggonzale) February 2014 for CS 450 HW2\n");
 
     char * server, *server_port, *relay, *relay_port;
+    int rdt = 10;
 
     if(argc == 1) {
 
         relay = "localhost";
         relay_port = "54323";
-        // relay = "none";
-
-    }
-    else if(argc == 2) {
-
-        relay = argv[1];
-        relay_port = "54323";
+        server = "localhost";
+        server_port = "54323";
 
     }
     else if(argc == 3) {
 
         relay = argv[1];
-        relay_port = argv[2];
+        relay_port = "54323";
+        server = argv[1];
+        server_port = "54323";
+        rdt = atoi(argv[2]);
 
     }
-    else if(argc == 5) {
+    else if(argc == 4) {
+
+        relay = argv[1];
+        relay_port = argv[2];
+        server = argv[1];
+        server_port = argv[2];
+        rdt = atoi(argv[3]);
+
+    }
+    else if(argc == 6) {
 
         server = argv[1];
         server_port = argv[2];
 
         relay = argv[3];
         relay_port = argv[4];
+        rdt = atoi(argv[5]);
 
     }
     else {
@@ -161,7 +185,7 @@ int main(int argc, char ** argv) {
     char * data;
     int8_t saveFile;
 
-    // while(1) {
+    while(1) {
 
         cout << "Name of file to send > ";
         getline(cin, filename);
@@ -204,15 +228,13 @@ int main(int argc, char ** argv) {
 
         }
 
-        cout << "Would you like to save file (" + filename +  ") to server (yes/no)?";
+        cout << "Would you like to save file (" + filename +  ") to server (yes/no)? ";
         getline(cin, input);
 
         if(!input.compare("yes"))
             saveFile = 1;
         else
             saveFile = 0;
-
-        // make packet
 
         char hostname[128];
         gethostname(hostname, sizeof(hostname));
@@ -222,15 +244,20 @@ int main(int argc, char ** argv) {
         hostip = printIP((unsigned char *)hostip_list[0]);
         printf("Host ip: %s Server IP: %s\n", hostip, address);
         Packet * packet;
-        printf("WTF\n");
-        packet = makePacket(address, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, strlen(data), 0);
+        packet = makePacket(server, hostip, filename, myaddr.sin_port, htons(atoi(server_port)), 1, saveFile, strlen(data), 0);
 
         if(sb.st_size <= BLOCKSIZE)
-            sendPacket(relay_sock, data, servaddr, sb.st_size, 1, packet);
+            sendPacket(relay_sock, data, servaddr, sb.st_size, 0, packet, rdt, 0);
         else
-            sendPackets(relay_sock, data, servaddr, packet);
+            sendPackets(relay_sock, data, servaddr, packet, rdt);
 
-    // }
+        cout << "Would you like to send another file? ";
+        getline(cin, input);
+
+        if(input.compare("yes"))
+            break;
+
+    }
 
     if(strcmp(address, relay) != 0)
         free(address);
