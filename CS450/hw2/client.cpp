@@ -1,101 +1,8 @@
-#include "450UtilsUDP.h"
-
-using namespace std;
+#include "450UtilsUDP.cpp"
 
 void usage() {
     cout << "Usage: client [server] [port] [relay] [port]...\nIf any argument is omitted, then all following arguments must also be omitted.\n";
     exit(1);
-}
-
-char * printIP(uint32_t ip) {
-
-    char * ipAddress;
-    ipAddress = (char *)calloc(INET_ADDRSTRLEN, sizeof(char));
-
-    inet_ntop(AF_INET, &ip, ipAddress, INET_ADDRSTRLEN);
-
-    // printf("%s\n", ipAddress);
-
-    return ipAddress;
-
-}
-
-char * printIP(unsigned char *ip) {
-
-    char * ipAddress;
-    ipAddress = (char *)calloc(10, sizeof(char));
-    sprintf(ipAddress, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-
-    return ipAddress;
-
-}
-
-void printHeader(CS450Header header) {
-
-    printf("\tVersion %d UIN %ld HW_number %d transactionNumber %d\n",
-        header.version,header.UIN,header.HW_number, header.transactionNumber);
-    char * to_IP, *from_IP;
-    from_IP = printIP(header.from_IP);
-    to_IP = printIP(header.to_IP);
-    printf("\tUser ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, from_IP, ntohs(header.from_Port), to_IP, ntohs(header.to_Port));
-    if(header.packetType != 2)
-        printf("\tData sending: %lu Size of data: %d saveFile: %d\n",
-            header.nbytes, header.nTotalBytes, header.saveFile);
-
-    printf("\n");
-
-    free(from_IP);
-    free(to_IP);
-
-}
-
-char ** getIpAddress(char * host) {
-
-    struct hostent *hp;
-    int i;
-
-    hp = gethostbyname(host);
-    if(!hp) {
-
-        fprintf(stderr, "could not obtain address of %s\n", host);
-        return NULL;
-
-    }
-
-    // printf("Ip address %s of host %s\n", hp->h_addr_list[0], host);
-    // char * addrlist;
-    // addrlist = printIP((unsigned char *)hp->h_addr_list[0]);
-    // printf("%s\n", addrlist);
-    // free(addrlist);
-
-    return hp->h_addr_list;
-
-}
-
-Packet * makePacket(char * relay, char * hostip, string filename, uint16_t from_Port, uint16_t to_Port, int packetType, int saveFile, int nTotalBytes) {
-
-    Packet * packet;
-
-    packet = (Packet *)malloc(PacketSize);
-    packet->header.version = 6;
-    printf("WTF0\n");
-    packet->header.UIN = 665799950;
-    packet->header.HW_number = 2;
-    strcpy(packet->header.ACCC, "ggonza20");
-    inet_pton(AF_INET, relay, &packet->header.to_IP);
-    // printf("%s\n", printIP((unsigned char *)packet->header.to_IP));
-    printf("WTF1\n");
-    inet_pton(AF_INET, hostip, &packet->header.from_IP);
-    printf("WTF2\n");
-    packet->header.from_Port = from_Port;
-    packet->header.to_Port = to_Port;
-    strcpy(packet->header.filename, filename.c_str());
-    packet->header.packetType = 1;
-    packet->header.saveFile = saveFile;
-    packet->header.nTotalBytes = nTotalBytes;
-
-    return packet;
-
 }
 
 int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int datasize, int transactionNumber, Packet * packet) {
@@ -103,8 +10,11 @@ int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int dat
     strcpy(packet->data, data);
     packet->header.nbytes = datasize;
     packet->header.transactionNumber = transactionNumber;
+    packet->header.checksum = 0;
+    packet->header.checksum = calcChecksum((void*)packet, PacketSize);
     unsigned int servlen = sizeof(servaddr);
 
+    printf("Checksum of packet: %d\n", calcChecksum((void*)packet, PacketSize));
     printHeader(packet->header);
 
     if(sendto(relay_sock, packet, PacketSize, 0, (struct sockaddr *)&
@@ -232,9 +142,7 @@ int main(int argc, char ** argv) {
 
         try {
 
-            // address = addr_list[iter];
             address = printIP((unsigned char *)addr_list[iter]);
-            // address
             printf("Trying address %s of host %s\n", address, relay);
             ++iter;
 
@@ -247,17 +155,6 @@ int main(int argc, char ** argv) {
         }
 
     }
-
-    // try {
-
-    //     free(address);
-
-    // }
-    // catch(...) {
-
-    //     ;
-
-    // }
 
     string input, filename;
     struct stat sb;
@@ -326,21 +223,17 @@ int main(int argc, char ** argv) {
         printf("Host ip: %s Server IP: %s\n", hostip, address);
         Packet * packet;
         printf("WTF\n");
-        packet = makePacket(address, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, strlen(data));
+        packet = makePacket(address, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, strlen(data), 0);
 
         if(sb.st_size <= BLOCKSIZE)
             sendPacket(relay_sock, data, servaddr, sb.st_size, 1, packet);
         else
             sendPackets(relay_sock, data, servaddr, packet);
 
-        try {
-            free(address);
-        }
-        catch(...) {
-            ;
-        }
-
     // }
+
+    if(strcmp(address, relay) != 0)
+        free(address);
 
     close(relay_sock);
 

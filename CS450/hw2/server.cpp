@@ -11,77 +11,27 @@
     Written by Giancarlo Gonzalez (ggonza20) January 2014 for CS 450 HW1
 */
 
-#include "450UtilsUDP.h"
+#include "450UtilsUDP.cpp"
 #include <fstream>
 
-using namespace std;
+int sendNack(CS450Header * header, int server_sock, struct sockaddr_in remote_addr, unsigned int addrlen) {
 
-char * printIP(uint32_t ip) {
+    Packet * packet;
 
-    char * ipAddress;
-    ipAddress = (char *)calloc(INET_ADDRSTRLEN, sizeof(char));
+    char * to_IP, * from_IP;
+    to_IP = printIP(header->from_IP);
+    from_IP = printIP(header->to_IP);
 
-    inet_ntop(AF_INET, &ip, ipAddress, INET_ADDRSTRLEN);
+    packet = makePacket(to_IP, from_IP, header->filename, header->to_Port, header->from_Port, 2, 0, header->nTotalBytes, 0);
 
-    // printf("%s\n", ipAddress);
+    packet->header.transactionNumber = header->transactionNumber;
+    packet->header.ackNumber = 0;
+    packet->header.packetType = 2;
 
-    return ipAddress;
-
-}
-
-char * printIP(unsigned char *ip) {
-
-    char * ipAddress;
-    sprintf(ipAddress, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-
-    return ipAddress;
-
-}
-
-void printHeader(CS450Header header) {
-
-    printf("\tVersion %d UIN %ld HW_number %d transactionNumber %d\n",
-        header.version,header.UIN,header.HW_number, header.transactionNumber);
-    char * to_IP, *from_IP;
-    from_IP = printIP(header.from_IP);
-    to_IP = printIP(header.to_IP);
-    printf("\tUser ID %s from IP %s:%d to IP %s:%d\n", header.ACCC, from_IP, ntohs(header.from_Port), to_IP, ntohs(header.to_Port));
-    if(header.packetType != 2)
-        printf("\tData sending: %lu Size of data: %d saveFile: %d\n",
-            header.nbytes, header.nTotalBytes, header.saveFile);
-
-    printf("\n");
-
-    free(from_IP);
-    free(to_IP);
-
-}
-
-int sendAck(CS450Header * header, int server_sock, struct sockaddr_in remote_addr, unsigned int addrlen) {
-
-    Packet packet;
-    //send acknowledgement of file received
-    packet.header.version = 6;
-    packet.header.UIN = header->UIN;
-    packet.header.transactionNumber = header->transactionNumber;
-    packet.header.ackNumber = 1;
-    uint32_t from_IP = header->to_IP;
-    packet.header.to_IP = header->from_IP;
-    packet.header.from_IP = from_IP;
-    uint16_t from_port = header->to_Port;
-    packet.header.to_Port = header->from_Port;
-    packet.header.from_Port = from_port;
-    packet.header.nbytes = 0;
-    packet.header.nTotalBytes = 0;
-    strcpy(packet.header.filename, header->filename);
-    packet.header.HW_number = 2;
-    packet.header.packetType = 2;
-    strcpy(packet.header.ACCC, header->ACCC);
-
-    // printHeader(packet.header);
+    printHeader(packet->header);
 
     // memset(&packet.data, 0, sizeof(packet.data));
-    if(sendto(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, addrlen) < 0) {
+    if(sendto(server_sock, packet, PacketSize, 0, (struct sockaddr *)&remote_addr, addrlen) < 0) {
 
         printf("Ack not sent.");
         return 0;
@@ -89,6 +39,39 @@ int sendAck(CS450Header * header, int server_sock, struct sockaddr_in remote_add
     }
     else
         return 1;
+
+    free(to_IP);
+    free(from_IP);
+
+}
+
+int sendAck(CS450Header * header, int server_sock, struct sockaddr_in remote_addr, unsigned int addrlen) {
+
+    Packet * packet;
+
+    char * to_IP, * from_IP;
+    to_IP = printIP(header->from_IP);
+    from_IP = printIP(header->to_IP);
+
+    packet = makePacket(to_IP, from_IP, header->filename, header->to_Port, header->from_Port, 2, 0, header->nTotalBytes, 0);
+
+    packet->header.transactionNumber = header->transactionNumber;
+    packet->header.ackNumber = 1;
+
+    printHeader(packet->header);
+
+    // memset(&packet.data, 0, sizeof(packet.data));
+    if(sendto(server_sock, packet, PacketSize, 0, (struct sockaddr *)&remote_addr, addrlen) < 0) {
+
+        printf("Ack not sent.");
+        return 0;
+
+    }
+    else
+        return 1;
+
+    free(to_IP);
+    free(from_IP);
 
     // printf("WTF\n");
 
@@ -160,8 +143,9 @@ int main(int argc, char ** argv) {
     gethostname(hostname, sizeof(hostname));
     printf("%s\n", hostname);
     char * data;
-    int data_length = 0, recv_accum = 0;
+    // int data_length = 0, recv_accum = 0;
     // CS450Header header;
+    uint32_t dont_handle = 0;
     while(1) {
 
         recv_count = recvfrom(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, &addrlen);
@@ -178,10 +162,10 @@ int main(int argc, char ** argv) {
         data = (char *)calloc(packet.header.nTotalBytes, sizeof(char));
 
         strncpy(data, packet.data, packet.header.nbytes);
-        data_length = strlen(data);
+        // data_length = strlen(data);
 
         sendAck(&packet.header, server_sock, remote_addr, addrlen);
-        printf("Data received: %d\n", data_length);
+        // printf("Data received: %d\n", data_length);
 
         if(packet.header.nTotalBytes == packet.header.nbytes)
             handlePacket(packet.header, data);
@@ -198,19 +182,28 @@ int main(int argc, char ** argv) {
                 // data_length = strlen(data);
                 // printf("Length data: %d\n", strlen(data));
 
-                sendAck(&packet.header, server_sock, remote_addr, addrlen);
+                dont_handle = calcChecksum((void *)&packet, PacketSize);
+                printf("Checksum: %d\n", dont_handle);
+                if(dont_handle == 0)
+                    sendAck(&packet.header, server_sock, remote_addr, addrlen);
+                else {
+
+                    sendNack(&packet.header, server_sock, remote_addr, addrlen);
+                    dont_handle = 1;
+                    break;
+
+                }
 
                 // recv_accum = strlen(data);
                 printf("Data received: %d\n", strlen(data));
 
             }
 
-            handlePacket(packet.header, data);
-            // recv_accum = 0;
+            if(dont_handle == 0)
+                handlePacket(packet.header, data);
 
         }
 
-        data_length = 0;
         free(data);
 
     }
