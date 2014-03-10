@@ -80,7 +80,7 @@ int sendAck(CS450Header * header, int server_sock, struct sockaddr_in remote_add
 
     printHeader(packet.header);
 
-    memset(&packet.data, 0, sizeof(packet.data));
+    // memset(&packet.data, 0, sizeof(packet.data));
     if(sendto(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, addrlen) < 0) {
 
         printf("Ack not sent.");
