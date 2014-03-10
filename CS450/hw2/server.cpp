@@ -194,7 +194,7 @@ int main(int argc, char ** argv) {
                 recv_count = recvfrom(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, &addrlen);
 
                 printHeader(packet.header);
-                strcpy((data+strlen(data)), packet.data);
+                strncpy((data+strlen(data)), packet.data, packet.header.nbytes);
                 // data_length = strlen(data);
                 // printf("Length data: %d\n", strlen(data));
 
