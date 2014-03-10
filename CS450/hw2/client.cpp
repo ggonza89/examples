@@ -30,7 +30,7 @@ int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int dat
     }
 
     unsigned int servlen = sizeof(servaddr);
-    // printHeader(packet->header);
+    printHeader(packet->header);
 
     if(sendto(relay_sock, packet, PacketSize, 0, (struct sockaddr *)&
         servaddr, servlen) < 0) {
@@ -54,7 +54,7 @@ int sendPacket(int relay_sock, char * data, struct sockaddr_in servaddr, int dat
             return sendPacket(relay_sock, data, servaddr, datasize, transactionNumber, packet, rdt, sequenceNumber);
 
 
-        // printHeader(acknowledgment.header);
+        printHeader(acknowledgment.header);
 
     }
 
