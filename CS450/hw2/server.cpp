@@ -171,18 +171,18 @@ int main(int argc, char ** argv) {
 
         data = (char *)calloc(packet.header.nTotalBytes, sizeof(char));
 
-        strcpy(data, packet.data);
+        strncpy(data, packet.data, packet.header.nbytes);
         data_length = strlen(data);
 
         sendAck(&packet.header, server_sock, remote_addr, addrlen);
-        // printf("Data received: %d\n", data_length);
+        printf("Data received: %d\n", data_length);
 
         if(packet.header.nTotalBytes == packet.header.nbytes)
             handlePacket(packet.header, data);
         else {
 
             recv_accum = data_length;
-            printf("Data received: %d\n", packet.header.nTotalBytes);
+            // printf("Data received: %d\n", packet.header.nTotalBytes);
             while(recv_accum < packet.header.nTotalBytes) {
 
                 recv_count = recvfrom(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, &addrlen);
@@ -200,6 +200,7 @@ int main(int argc, char ** argv) {
             }
 
             handlePacket(packet.header, data);
+            recv_accum = 0;
 
         }
 
