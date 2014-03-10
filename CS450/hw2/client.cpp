@@ -326,7 +326,7 @@ int main(int argc, char ** argv) {
         printf("Host ip: %s Server IP: %s\n", hostip, address);
         Packet * packet;
         printf("WTF\n");
-        packet = makePacket(address, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, sb.st_size);
+        packet = makePacket(address, hostip, filename, myaddr.sin_port, servaddr.sin_port, 1, saveFile, strlen(data));
 
         if(sb.st_size <= BLOCKSIZE)
             sendPacket(relay_sock, data, servaddr, sb.st_size, 1, packet);
