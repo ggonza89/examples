@@ -66,7 +66,7 @@ int sendPackets(int relay_sock, char * data, struct sockaddr_in servaddr, Packet
 
     int sent_accum = 0, data_sent = 0, transactionNumber = 0;
     char * block_data;
-    clock_t start, end;
+    time_t start, end;
     double rtt, avg_response_rate = 0.0;
     block_data = (char *)calloc(BLOCKSIZE, sizeof(char));
     // printf("%d\n", strlen(data));
@@ -79,10 +79,10 @@ int sendPackets(int relay_sock, char * data, struct sockaddr_in servaddr, Packet
         else
             strncpy(block_data, (data+sent_accum), BLOCKSIZE);
 
-        clock_t start = clock();
+        time(&start);
         data_sent = sendPacket(relay_sock, block_data, servaddr, strlen(block_data), transactionNumber, packet, rdt, transactionNumber%2);
-        clock_t end = clock();
-        rtt = double(end-start)/CLOCKS_PER_SEC;
+        time(&end);
+        rtt = difftime(start, end);
         printf("Round trip time: %f\n", rtt);
         avg_response_rate += rtt;
 
