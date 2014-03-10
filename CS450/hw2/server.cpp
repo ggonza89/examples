@@ -100,8 +100,8 @@ void handlePacket(CS450Header header, char * data) {
 
     if(header.saveFile) {
 
-        char * name;
-        sprintf(name, "~/examples/%s", header.filename);
+        char * name = "server_file.cpp";
+        // sprintf(name,, header.filename);
         printf("%s\n", name);
         ofstream file;
         file.open(name);
