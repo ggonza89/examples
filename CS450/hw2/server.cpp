@@ -182,7 +182,7 @@ int main(int argc, char ** argv) {
         else {
 
             recv_accum = data_length;
-            printf("Data received: %d\n", recv_accum);
+            printf("Data received: %d\n", packet.header.nTotalBytes);
             while(recv_accum < packet.header.nTotalBytes) {
 
                 recv_count = recvfrom(server_sock, &packet, PacketSize, 0, (struct sockaddr *)&remote_addr, &addrlen);
