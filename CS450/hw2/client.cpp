@@ -14,7 +14,7 @@ char * printIP(uint32_t ip) {
 
     inet_ntop(AF_INET, &ip, ipAddress, INET_ADDRSTRLEN);
 
-    printf("%s\n", ipAddress);
+    // printf("%s\n", ipAddress);
 
     return ipAddress;
 
