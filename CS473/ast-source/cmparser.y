@@ -11,8 +11,8 @@
 /* other external function prototypes */
 extern int yylex();
 extern int initLex(int ,  char **);
- 
-    
+
+
 /* external global variables */
 
 extern int		yydebug;
@@ -20,13 +20,13 @@ extern int		yylineno;
 extern SymbolTableStackEntryPtr symbolStackTop;
 extern int scopeDepth;
 
-/* function prototypes */ 
+/* function prototypes */
 void	yyerror(const char *);
 
 /* global variables */
 
 AstNodePtr  program;
- 
+
 
 %}
 
@@ -39,18 +39,18 @@ AstNodePtr  program;
     Type      *type;
 }
 
-    
+
 
 /* terminals */
 
-%token TOK_ELSE TOK_IF TOK_RETURN TOK_VOID TOK_INT TOK_WHILE 
+%token TOK_ELSE TOK_IF TOK_RETURN TOK_VOID TOK_INT TOK_WHILE
 %token TOK_PLUS TOK_MINUS TOK_MULT TOK_DIV TOK_LT TOK_LE TOK_GT TOK_GE TOK_EQ TOK_NE TOK_ASSIGN TOK_SEMI TOK_COMMA
 %token TOK_LPAREN TOK_RPAREN TOK_LSQ TOK_RSQ TOK_LBRACE TOK_RBRACE TOK_ERROR
-%token <cVal> TOK_ID 
+%token <cVal> TOK_ID
 %token <iVal> TOK_NUM
 
-%type <nodePtr> Declarations Functions
-%type <type> Type_Specifier 
+%type <nodePtr> Declarations Functions Fun_Declaration
+%type <type> Type_Specifier
 %type <nodePtr> Compound_Stmt Statements Statement
 %type <nodePtr> Expr_Statement If_Else_Statement Selection_Stmt Iteration_Stmt Return_Stmt
 %type <nodePtr> Expression Simple_Expression Additive_Expression Factor Var Call
@@ -63,7 +63,7 @@ AstNodePtr  program;
 %left TOK_EQ TOK_NE
 %nonassoc TOK_LT TOK_GT	TOK_LE TOK_GE
 %left TOK_PLUS TOK_SUB
-%left TOK_MULT TOK_DIV 
+%left TOK_MULT TOK_DIV
 %nonassoc error
 
 %%
@@ -71,42 +71,99 @@ AstNodePtr  program;
 
 Start	: Declarations {
 
-                        }
-;
+                program = $1;
 
-Declarations : Functions { 
-                         program = $1;
-			 }
-	     | Var_Declaration Declarations {
-	     }
+        };
+
+Declarations : Functions {
+
+			}
+            | Var_Declaration Declarations {
+
+            }
 ;
 
 Functions    : Fun_Declaration {
-	                   
+
 			   }
 	     | Fun_Declaration Functions {
-	     			
+
 		   	   }
 ;
 
 Var_Declaration : Type_Specifier TOK_ID TOK_SEMI {
-				
-			   }
+
+                if($1->kind == VOID) {
+                    yyerror($2);
+                }
+                else {
+
+                    ElementPtr elem = symLookup($2);
+                    if(elem != NULL)
+                        if(elem->scope == scopeDepth)
+                            yyerror($2);
+                        else {
+
+                            elem = symInsert($2,$1,yylineno);
+
+                        }
+                    else
+                        elem = symInsert($2,$1,yylineno);
+
+    			 }
+
+            }
 		| Type_Specifier TOK_ID TOK_LSQ TOK_NUM TOK_RSQ TOK_SEMI {
-		
-		           }
+
+                if($1->kind == VOID) {
+                    yyerror($2);
+                }
+                else {
+
+                    $1->dimension = $4;
+                    ElementPtr elem = symLookup($2);
+                    if(elem != NULL)
+                        if(elem->scope == scopeDepth)
+                            yyerror($2);
+                        else
+                            elem = symInsert($2,$1,yylineno);
+                    else
+                        elem = symInsert($2,$1,yylineno);
+
+                 }
+
+            }
 ;
 
-Fun_Declaration : Type_Specifier TOK_ID TOK_LPAREN Params TOK_RPAREN Compound_Stmt {
+Fun_Declaration : Type_Specifier TOK_ID TOK_LPAREN {
 
-                           }
+                    ElementPtr elem = symLookup($2);
+                    if(elem != NULL)
+                        yyerror($2);
+                    else {
+
+                        $<nodePtr>$ = new_Node(METHOD);
+                        $$->nLinenumber = yylineno;
+                        elem = symInsert($2,$1,yylineno);
+                        elem->snode = $$;
+
+                        enterScope();
+
+                    }
+
+                }
+                Params TOK_RPAREN Compound_Stmt {
+
+
+
+                }
 ;
 
 Params : Param_List {
-			   
+
 			   }
        | TOK_VOID {
-       
+
        			   }
 ;
 
@@ -114,22 +171,55 @@ Param_List : Param_List TOK_COMMA Param {
 
 			   }
 	   | Param {
-	   			
+
 			}
 ;
 
 Param : Type_Specifier TOK_ID  {
-		
-		 	}
+
+            /*if($1->kind == VOID) {
+                    yyerror($2);
+            }
+            else {
+
+                ElementPtr elem = symLookup($2);
+                if(elem != NULL)
+                    if(elem->scope == scopeDepth)
+                        yyerror($2);
+                    else
+                        elem = symInsert($2,$1,yylineno);
+                else
+                    elem = symInsert($2,$1,yylineno);
+
+             }*/
+
+     	}
       | Type_Specifier TOK_ID TOK_LSQ TOK_RSQ  {
-      
-      			}
+
+            /*if($1->kind == VOID)
+                yyerror($2);
+            else {
+
+                ElementPtr elem = symLookup($2);
+                if(elem != NULL)
+                    if(elem->scope == scopeDepth)
+                        yyerror($2);
+                    else
+                        elem = symInsert($2,$1,yylineno);
+                else
+                    elem = symInsert($2,$1,yylineno);
+
+             }*/
+
+      	}
 ;
+
+
 Type_Specifier : TOK_INT {
-			
+            $$ = new_type(INT);
 			}
 	       | TOK_VOID {
-	       
+            $$ = new_type(VOID);
 	       		}
 ;
 
@@ -137,7 +227,7 @@ Compound_Stmt : TOK_LBRACE Statements TOK_RBRACE {
 
 			}
               | TOK_LBRACE Local_Declarations Statements TOK_RBRACE {
-	      
+
 	      		}
 ;
 
@@ -145,7 +235,7 @@ Local_Declarations : Var_Declaration Local_Declarations {
 
 			}
 		   | Var_Declaration {
-		   
+
 		   	}
 ;
 
@@ -153,7 +243,7 @@ Statements : Statement Statements {
 
 			}
 	   | {
-	   		
+
 			}
 ;
 
@@ -161,24 +251,24 @@ Statement : Expr_Statement  {
 
 			}
 	  | Compound_Stmt {
-	  		
+
 			}
 	  | Selection_Stmt {
 
 	  		}
 	  | Iteration_Stmt {
-	  
+
 	  		}
 	  | Return_Stmt {
-	  	
+
 			}
 ;
 
 Expr_Statement : Expression TOK_SEMI {
-			
+
 			}
 	       | TOK_SEMI {
-	       
+
 	       		}
 ;
 
@@ -204,23 +294,23 @@ Return_Stmt : TOK_RETURN Expression TOK_SEMI {
 
 			}
 	    | TOK_RETURN TOK_SEMI {
-	    
+
 	    		}
 ;
 
 Expression : Var TOK_ASSIGN Expression  {
-				
+
 			}
             | Simple_Expression {
-	    
+
 	    		}
 ;
 
-Var : TOK_ID { 
-			
+Var : TOK_ID {
+
 			}
     | TOK_ID TOK_LSQ Simple_Expression TOK_RSQ {
-    
+
     			}
 ;
 
@@ -228,22 +318,22 @@ Simple_Expression : Additive_Expression TOK_GT Additive_Expression {
 
 			}
                   | Additive_Expression TOK_LT Additive_Expression {
-		  
+
 		  	}
                   | Additive_Expression TOK_GE Additive_Expression {
-		  
+
 		  	}
                   | Additive_Expression TOK_LE Additive_Expression {
-		  	
+
 			}
                   | Additive_Expression TOK_EQ Additive_Expression {
-		  				
+
 		  	}
                   | Additive_Expression TOK_NE Additive_Expression {
-		  
+
 		  	}
 		  | Additive_Expression {
-		  
+
 		  	}
 ;
 
@@ -251,10 +341,10 @@ Additive_Expression : Additive_Expression TOK_PLUS Term {
 
 			}
                     | Additive_Expression TOK_MINUS Term {
-		    
+
 		    	}
 		    | Term {
-		    
+
 		    	}
 ;
 
@@ -262,10 +352,10 @@ Term : Term TOK_MULT Factor  {
 
 			}
      |  Term TOK_DIV Factor {
-     
+
      			}
      | Factor {
-     			
+
 			}
 ;
 
@@ -273,13 +363,13 @@ Factor : TOK_LPAREN Expression TOK_RPAREN {
 
 			}
        | Var {
-       			
+
 			}
        | Call {
-       
+
        			}
        | TOK_NUM {
-       
+
        			}
 ;
 
@@ -289,10 +379,10 @@ Call : TOK_ID TOK_LPAREN Args TOK_RPAREN {
 ;
 
 Args : Args_List {
-			
+
 			}
      | {
-     
+
      			}
 ;
 
@@ -300,17 +390,18 @@ Args_List : Args_List TOK_COMMA Expression {
 
 			}
 	  | Expression {
-	  
+
 	  		}
 ;
 
 %%
 void yyerror (char const *s) {
-       fprintf (stderr, "Line %d: %s\n", yylineno, s);
+       fprintf (stderr, "Line %d: error: %s\n", yylineno, s);
 }
 
 int main(int argc, char **argv){
 
+    initSymbolTable();
 	initLex(argc,argv);
 
 #ifdef YYLLEXER
@@ -319,8 +410,8 @@ int main(int argc, char **argv){
 #else
     yyparse();
 
-//    print_Ast();
-    
+    print_Ast();
+
 #endif
-    
-} 
+
+}

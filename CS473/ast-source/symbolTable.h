@@ -20,16 +20,15 @@ typedef struct type{
 }Type;
 
 typedef Type *TypePtr;
-        
+
 typedef struct element {
 	int		key;
-        char *		id;	       
-	int             linenumber;
-	int             scope;   /* scope depth at declaration */
-	Type     	*stype;	      /* pointer to the type infomation */
-	struct element	*next;		/* pointer to the next symbol with the
-				          same hash table index */
-        struct node     *snode;   /* (New) AST Node for method declartion */
+	char 	*id;
+	int     linenumber;
+	int     scope;   /* scope depth at declaration */
+	Type    *stype;	      /* pointer to the type infomation */
+	struct element	*next;		/* pointer to the next symbol with the same hash table index */
+    struct node     *snode;   /* (New) AST Node for method declaration */
 } Element;
 
 typedef Element	*ElementPtr;

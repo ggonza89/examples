@@ -14,51 +14,51 @@ int scopeDepth;
 
 //allocate the global scope entry and symbol table --and set scopeDepth to 0
 // The global scope remains till the end of the program
-int initSymbolTable() 
+int initSymbolTable()
 {
-	//initialize a stack 
+	//initialize a stack
 	int i=0;
 	symbolStackTop = (SymbolTableStackEntryPtr) malloc (sizeof(struct symbolTableStackEntry));
 	if (symbolStackTop == NULL) return 0;
 	symbolStackTop -> symbolTablePtr = (SymbolTable*) malloc (sizeof(SymbolTable));
 	for(i=0; i<MAXHASHSIZE; i++)
-		symbolStackTop -> symbolTablePtr->hashTable[i] = NULL;				
+		symbolStackTop -> symbolTablePtr->hashTable[i] = NULL;
 	symbolStackTop->prevScope = NULL;
-	scopeDepth = 0;	
-	//printf("\n Initialized Stack with Global Hash Table");
+	scopeDepth = 0;
+	// printf("\n Initialized Stack with Global Hash Table");
 	return 1;
 }
 
 
-// Look up a given entry 
+// Look up a given entry
 ElementPtr symLookup(char *name)
 {
 	char *a = name;
-	SymbolTableStackEntryPtr iter = symbolStackTop;	
-	int ascii = 0,depth = scopeDepth ;		
+	SymbolTableStackEntryPtr iter = symbolStackTop;
+	int ascii = 0,depth = scopeDepth ;
 	while(*a!='\0')
 	{
-		ascii+= (int) *a; 
+		ascii+= (int) *a;
 		a++;
 	}
 	while(iter)
 	{
-		ElementPtr symelement = iter->symbolTablePtr->hashTable[ascii%16];			
+		ElementPtr symelement = iter->symbolTablePtr->hashTable[ascii%16];
 		while(symelement)
 		{
 			if(strcmp(symelement->id, name) == 0)
 			{
 				//printf("\n Found symbol %s at scope depth %d",name, depth);
-				return symelement;				
-			}			
+				return symelement;
+			}
 			else
-			   symelement = symelement->next; 					
-				
+			   symelement = symelement->next;
+
 		}
-		iter = iter->prevScope;	
+		iter = iter->prevScope;
 		//printf("\n Did not find symbol %s at scope depth %d",name, depth);
 		depth--;
-	}		
+	}
 	return NULL;
 }
 
@@ -71,10 +71,10 @@ ElementPtr symInsert(char *name, Type *type, int line)
 {
 	ElementPtr new_element = (ElementPtr) malloc (sizeof(Element));
 	char *a = name;
-	int ascii = 0 ;		
+	int ascii = 0 ;
 	while(*a!='\0')
 	{
-		ascii+= (int) *a; 
+		ascii+= (int) *a;
 		a++;
 	}
 	new_element->key = ascii%16;
@@ -82,19 +82,19 @@ ElementPtr symInsert(char *name, Type *type, int line)
 	new_element->linenumber = line;
 	new_element->scope = scopeDepth;
 	new_element->stype = type;
-        new_element->snode = NULL;
+    new_element->snode = NULL;
 	if(!symbolStackTop->symbolTablePtr->hashTable[new_element->key]) // if the first element of hash table for this ascii is null
 	{
 		new_element->next = NULL;
-		symbolStackTop->symbolTablePtr->hashTable[new_element->key] = new_element;	
-	}	
+		symbolStackTop->symbolTablePtr->hashTable[new_element->key] = new_element;
+	}
 	else
 	{
 		new_element->next = symbolStackTop->symbolTablePtr->hashTable[new_element->key];
 		symbolStackTop->symbolTablePtr->hashTable[new_element->key] = new_element;
-		
-	}	
-	//printf("\n Inserted %s at scope depth %d with ascii %d ",new_element->id,scopeDepth,new_element->key);
+
+	}
+	printf(" Inserted %s at scope depth %d with ascii %d\n",new_element->id,scopeDepth,new_element->key);
 	return symbolStackTop->symbolTablePtr->hashTable[new_element->key];
 
 }
@@ -111,10 +111,10 @@ int enterScope()
 	if (newSymbolStackEntry == NULL) return 0;
 	newSymbolStackEntry -> symbolTablePtr = (SymbolTable*) malloc (sizeof(SymbolTable));
 	for(i=0; i<MAXHASHSIZE; i++)
-		newSymbolStackEntry -> symbolTablePtr->hashTable[i] = NULL;				
-	newSymbolStackEntry->prevScope = symbolStackTop; 
+		newSymbolStackEntry -> symbolTablePtr->hashTable[i] = NULL;
+	newSymbolStackEntry->prevScope = symbolStackTop;
 	symbolStackTop = newSymbolStackEntry;
-	scopeDepth++;	
+	scopeDepth++;
 	//printf("\n New Scope");
 	return 1;
 }
@@ -127,18 +127,18 @@ void leaveScope()
 	if (!symbolStackTop)
 		printf("\n Error .. cannot leave global scope");
 	else if(!symbolStackTop->prevScope)
-		symbolStackTop = NULL;		
-	else	
-		symbolStackTop = symbolStackTop->prevScope;	
-	scopeDepth--;	
+		symbolStackTop = NULL;
+	else
+		symbolStackTop = symbolStackTop->prevScope;
+	scopeDepth--;
 }
 
 // Do not modify this function
 void printElement(ElementPtr symelement) {
     if (symelement != NULL) {
-        printf("\nLine %d: %s", symelement->linenumber,symelement->id);
+        printf("Line %d: %s\n", symelement->linenumber,symelement->id);
     }
-    else printf("Wrong call! symbol table entry NULL");
+    else printf("Wrong call! symbol table entry NULL\n");
 }
 
 //should traverse through the entire symbol table and print it
@@ -150,15 +150,15 @@ void printSymbolTable()
 	while(SymbolStackEntry)
 	{
 		for(i=0; i<MAXHASHSIZE;i++)
-		{	
+		{
 			ElementPtr symelement = SymbolStackEntry->symbolTablePtr->hashTable[i];
 			while(symelement)
 			{
 				printElement(symelement);
-				symelement = symelement->next; 
-			}		
-		}	
-		SymbolStackEntry = SymbolStackEntry->prevScope; 
+				symelement = symelement->next;
+			}
+		}
+		SymbolStackEntry = SymbolStackEntry->prevScope;
 	}
 }
 
@@ -166,10 +166,10 @@ void printSymbolTable()
 
 
 
-            
 
 
-    
+
+
 
 
 

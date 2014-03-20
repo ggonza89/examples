@@ -12,13 +12,13 @@ typedef enum {VAR_EXP, ARRAY_EXP, ASSI_EXP, ADD_EXP, SUB_EXP, MULT_EXP, DIV_EXP,
 
 typedef struct node {
     NodeKind    nKind;
-    StmtKind sKind; 
+    StmtKind sKind;
     ExpKind  eKind;
     struct node *children[MAXCHILDREN]; // max needed for if_then_else
     struct node *sibling; //List of statements, formal argument
     Type *nType; //node's type for typechecking expressions for HW5
     ElementPtr nSymbolPtr; // for variable and array expressions
-    int nValue;  // for integer constants 
+    int nValue;  // for integer constants
     SymbolTablePtr nSymbolTabPtr; //For a block, its symbol table
     char *fname;  // for a call expr, the name of the called function
     int nLinenumber;
@@ -29,5 +29,7 @@ typedef AstNode *AstNodePtr;
 AstNodePtr  new_ExprNode(ExpKind kind) ;
 
 AstNodePtr new_StmtNode(StmtKind kind);
+
+AstNodePtr new_Node(NodeKind kind);
 
 Type* new_type(TypeKind kind);

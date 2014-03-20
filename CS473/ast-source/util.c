@@ -7,7 +7,7 @@
 extern AstNode *program;
 extern SymbolTableStackEntryPtr symbolStackTop;
 
-extern void printSymbolTable(); 
+extern void printSymbolTable();
 
 #define PAD_STR "   "
 
@@ -26,7 +26,7 @@ void pad (int level) {
 void printMethodParams (SymbolTableStackEntryPtr scope) {
 	int i;
 	SymbolTableStackEntryPtr SymbolStackEntry = scope;
-	for(i=0; i<MAXHASHSIZE;i++) {	
+	for(i=0; i<MAXHASHSIZE;i++) {
 	   ElementPtr symelement = SymbolStackEntry->symbolTablePtr->hashTable[i];
 		while(symelement) {
 		   switch(symelement->stype->kind) {
@@ -42,12 +42,12 @@ void printMethodParams (SymbolTableStackEntryPtr scope) {
 		   case FUNCTION :
 		   break;
 		   }
-			symelement = symelement->next; 
+			symelement = symelement->next;
 			if(symelement)
 			   printf(", ");
-		}		
+		}
 	}
-} 
+}
 
 /*
  * Print the variable declarations of the scope.
@@ -57,8 +57,8 @@ int printVarDeclarations (SymbolTablePtr scope)
 {
 	int noVar = 0;
     int i;
-	
-	for(i=0; i<MAXHASHSIZE;i++) {	
+
+	for(i=0; i<MAXHASHSIZE;i++) {
 	   ElementPtr symelement = scope->hashTable[i];
 		while(symelement) {
 		   pad(indLevel);
@@ -76,15 +76,15 @@ int printVarDeclarations (SymbolTablePtr scope)
 		   case FUNCTION :
 		   break;
 		   }
-			symelement = symelement->next; 
-		}		
-	}	
+			symelement = symelement->next;
+		}
+	}
 	return noVar;
 }
 
 //traverses through the entire program and symbol table  and prints it
 //the output must match the program with the exception of white spaces
-//do a diff -w to ignre white spaces 
+//do a diff -w to ignre white spaces
 void printType(TypePtr type, int dummy){
 	switch(type->kind) {
 	   case INT :
@@ -98,7 +98,7 @@ void printType(TypePtr type, int dummy){
 		break;
 		case FUNCTION :
 		   printType(type->function, 0);
-		break;	
+		break;
 	}
 }
 
@@ -108,7 +108,7 @@ void print_Expression(AstNodePtr expr, int endWithSemi) {
    }
 
    switch(expr->eKind) {
-   case VAR_EXP :  
+   case VAR_EXP :
       printf("%s", expr->nSymbolPtr->id);
    break;
    case ARRAY_EXP :
@@ -155,7 +155,7 @@ void print_Expression(AstNodePtr expr, int endWithSemi) {
       print_Expression(expr->children[0], 0);
       printf(" >= ");
       print_Expression(expr->children[1], 0);
-   break; 
+   break;
    case LE_EXP :
       print_Expression(expr->children[0], 0);
       printf(" <= ");
@@ -195,8 +195,8 @@ void print_Expression(AstNodePtr expr, int endWithSemi) {
 void print_Statement(AstNodePtr stmt) {
    if(stmt == NULL)
       return;
-   
-   pad(indLevel);   
+
+   pad(indLevel);
    switch(stmt->sKind) {
    case IF_THEN_ELSE_STMT :
       printf("if(");
@@ -207,20 +207,20 @@ void print_Statement(AstNodePtr stmt) {
             indLevel++;
             print_Statement(stmt->children[1]);
             indLevel--;
-         } else print_Statement(stmt->children[1]);  
+         } else print_Statement(stmt->children[1]);
       } else {
           pad(indLevel+1);
           printf(";\n");
       }
       if(stmt->children[2] != NULL) {
-         pad(indLevel);                  
+         pad(indLevel);
          printf("else\n");
          if(stmt->children[2]->sKind != COMPOUND_STMT) {
             indLevel++;
             print_Statement(stmt->children[2]);
             indLevel--;
-         } else print_Statement(stmt->children[2]); 
-      } 
+         } else print_Statement(stmt->children[2]);
+      }
    break;
    case WHILE_STMT :
       printf("while(");
@@ -241,7 +241,7 @@ void print_Statement(AstNodePtr stmt) {
       printf("return ");
       if(stmt->children[0] == NULL)
          printf(";\n");
-      else   
+      else
          print_Expression(stmt->children[0], 1);
    break;
    case COMPOUND_STMT :
@@ -250,36 +250,36 @@ void print_Statement(AstNodePtr stmt) {
       if(stmt->nSymbolTabPtr != NULL) {
          if(printVarDeclarations(stmt->nSymbolTabPtr) > 0)
             printf("\n");
-      }  
-      if(stmt->children[0] != NULL)          
+      }
+      if(stmt->children[0] != NULL)
          print_Statement(stmt->children[0]); // Print the first statement
       else {
-         pad(indLevel);  
+         pad(indLevel);
          printf(";\n");
       }
       indLevel--;
       pad(indLevel);
       printf("}\n");
    break;
-   case EXPRESSION_STMT : 
+   case EXPRESSION_STMT :
       print_Expression(stmt->children[0], 1);
    break;
-   }  
-//printf("sibling : %d\n", stmt->sibling);   
+   }
+//printf("sibling : %d\n", stmt->sibling);
    print_Statement(stmt->sibling); // Print the next statement
 }
 
-void print_Ast_Recursion(AstNodePtr root) { 
+void print_Ast_Recursion(AstNodePtr root) {
 //printf("print_Ast_Recursion: root = %d\n", root);
    /*
     * End the recursion
     */
    if(root == NULL)
       return;
-     
+
    switch(root->nKind) {
    case METHOD :
-//printf("root->nKind = METHOD\n");   
+//printf("root->nKind = METHOD\n");
       printType(root->nType, 0);
       printf(" %s(", root->nSymbolPtr->id);
       if(root->children[0] == NULL)
@@ -292,7 +292,7 @@ void print_Ast_Recursion(AstNodePtr root) {
       print_Ast_Recursion(root->sibling); // print the next method
    break;
    case FORMALVAR :
-//printf("root->nKind = FORMALVAR\n");   
+//printf("root->nKind = FORMALVAR\n");
       printType(root->nSymbolPtr->stype, 0); // print the type
       printf(" %s", root->nSymbolPtr->id); // print the name of the variable
       if(root->nSymbolPtr->stype->kind == ARRAY)
@@ -306,11 +306,11 @@ void print_Ast_Recursion(AstNodePtr root) {
       }
    break;
    case STMT :
-//printf("root->nKind = STMT\n");   
+//printf("root->nKind = STMT\n");
       print_Statement(root);
    break;
    case EXPRESSION :
-//printf("root->nKind = EXPRESSION\n");   
+//printf("root->nKind = EXPRESSION\n");
       print_Expression(root, 1); // I don't think it ever gets here
    break;
    }
@@ -320,16 +320,16 @@ void print_Ast() {
    /*
     * First print the entire symbol table
     */
-   //printSymbolTable();
+   printSymbolTable();
 
    /*
     * Then print the program
     */
-   indLevel = 0; 
+   indLevel = 0;
    if(printVarDeclarations(symbolStackTop->symbolTablePtr) > 0)
       printf("\n");
    print_Ast_Recursion(program);
 }
 
- 
+
 
