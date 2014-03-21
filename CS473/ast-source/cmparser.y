@@ -71,7 +71,8 @@ AstNodePtr  program;
 
 Start	: Declarations {
 
-                program = $1;
+          program = $1;
+
 
         };
 
@@ -85,6 +86,7 @@ Declarations : Functions {
 
 Functions    : Fun_Declaration {
 
+                  print_Ast();
 			   }
 	     | Fun_Declaration Functions {
 
@@ -153,8 +155,6 @@ Fun_Declaration : Type_Specifier TOK_ID TOK_LPAREN {
 
                 }
                 Params TOK_RPAREN Compound_Stmt {
-
-
 
                 }
 ;
@@ -409,8 +409,6 @@ int main(int argc, char **argv){
     return;
 #else
     yyparse();
-
-    print_Ast();
 
 #endif
 
