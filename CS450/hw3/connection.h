@@ -18,7 +18,7 @@ protected:
     unsigned int addrlen;
 
     int datalen;
-    char mesg[BUF_SIZE]
+    char mesg[PacketSize]
 
     // called so server/client can change sockaddr_in vars
     virtual int onSocketCreated();

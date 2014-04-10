@@ -1,25 +1,79 @@
 #ifndef _GOBACKN_PROTOCOL_H
 #define _GOBACKN_PROTOCOL_H
-#include "connection.h"
+#include "myutils.h"
 
-/* Abstract class that defines a protocol wrapping a connection c.
-    Use the sendMessage & receiveMessage to interact with the connection
-    object using the implemented procotol */
-class Protocol {
-protected:
-    Connection *c;
+#define N 10
+#define MAX_DATAGRAM_SIZE 256
+
+/* c/c++ % computes remainder, not modulo, the formula below
+    returns modulo. */
+#define MOD(x, m) (x%m + m)%m
+#define LAST_SENT_SEQN MOD(current_seqn - 1, N)
+
+#define DATAGRAM_IDENT "DATA"
+#define ACK_IDENT "ACK"
+
+
+/* Implementation of the Go-back-N protocol, N is a compile time constant set above.
+    This implementation is bidirectional & maintains different sequence numbers for each
+    direction of communication. */
+class GoBackNProtocol : public Protocol {
+private:
+
+    char buffer[PacketSize]; //buffer used for incoming and outgoing messages
+
+    /* client vars */
+    char* window[N]; //window of size N
+    int current_seqn; //sequence number to be assigned to the next packet
+    int last_acked_seqn; //last sequence number received from the server
+    int num_active; //number of active messages in the window
+
+    /* server vars*/
+    int last_sent_ackn; //sequence number of last ACK
+    int expected_seqn; //next sequence number expected by the server
+
+    /* use the underlying connection to send a message */
+    void sendDatagram(char* p);
+
+    /* returns true if the window still has space to add a message */
+    bool canAddToWindow();
+
+    /* creates and adds a message containing the payload b to the window */
+    void addToWindow(char b) ;
+
+    /* returns true if no ACKs are outstanding */
+    bool windowEmpty();
+
+    /* listen for an ACK, returns true if the socket does not timeout */
+    bool acceptAcks() ;
+
+    /* helper function to set timeout to 5 seconds before listening for an ACK */
+    bool listenForAck();
+
+    /* returns true if string pointed to by data_in is a valid ACK
+        sets ack_seqn to the parsed sequence number */
+    bool parseValidAck(int *ack_seqn, char* data_in);
+
+    /* returns true if the string pointed to by data_in is a valid DATA
+        sets memory pointed to by datagram_seqn & payload to the parsed seqn and payload */
+    bool parseValidDatagram(int *datagram_seqn, char *payload, char* data_in);
+
+    /* remove mes_seqn from the window and free its memory */
+    void removeFromWindow(int mesg_seqn);
+
+    /* send an ACK containing sequence number seqn */
+    void sendAck(int seqn);
+
+    /* resends all active message in the window */
+    void resendWindow();
+
 public:
+    GoBackNProtocol();
 
-    /* set connection to interact with */
-    void setConnection(Connection *c) {
-        this->c = c;
-    };
-
-    /* send a message of size t starting at the memory address pointed to by line
-        through the implememted protocol */
-    virtual int sendMessage(char* line, unsigned int t) = 0;
-
-    /* receive a message through the implemented protocol */
-    virtual char* receiveMessage() = 0;
+    /* implementation of abstract Protocol::sendMessage */
+    virtual int sendMessage(char* line, unsigned int t);
+    /* implementation of abstract Protocol::receiveMessage */
+    virtual char* receiveMessage();
 };
 
+#endif

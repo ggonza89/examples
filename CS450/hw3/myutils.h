@@ -1,9 +1,8 @@
 #ifndef _MYUTILS_H
 #define _MYUTILS_H
-#include "450UtilsUDP.h"
+#include "450UtilsUDP.cpp"
 
 #define DEFAULT_PORT 54323
-#define BUF_SIZE 4096
 
 /* Abstract connection that defines the necessary socket i/o functions.
     Implementations may decide which transport layer protocol to use */
