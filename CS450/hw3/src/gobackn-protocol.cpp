@@ -6,194 +6,301 @@
 #include "gobackn-protocol.h"
 
 GoBackNProtocol::GoBackNProtocol() {
-	c               = NULL;
-	current_seqn    = 0;
-	expected_seqn   = 0;
-	last_sent_ackn  = 0;
-	num_active      = 0;
-	last_acked_seqn = LAST_SENT_SEQN;
+
+    c               = NULL;
+    current_seqn    = 0;
+    expected_seqn   = 0;
+    last_sent_ackn  = 0;
+    num_active      = 0;
+    last_acked_seqn = LAST_SENT_SEQN;
+
+    for(int i = 0; i < N; ++i)
+        window[i] = (Packet *)malloc(PacketSize);
+
 }
 
-void GoBackNProtocol::sendDatagram(char* p) {
-	printf("SENDING: %s\n", p);
-	c->send(p, strlen(p));
+int GoBackNProtocol::sendPacket(Packet * packet) {
+
+	printf("Sending:\n");
+	printHeader(packet->header);
+	printf("\n");
+
+	c->send(packet, PacketSize);
+
+    return 0;
+
 }
 
-void GoBackNProtocol::addToWindow(char b) {
-	char* pTemp;
-	pTemp = new char[MAX_DATAGRAM_SIZE];
+int GoBackNProtocol::sendPacket(Packet * packet, char * data) {
 
-	sprintf(pTemp, DATAGRAM_IDENT" %i %c", current_seqn, b);
-	window[current_seqn] = pTemp;
-	current_seqn = MOD((current_seqn + 1), N);
-	num_active++;
+    strcpy(packet->data, data);
+    packet->header.nbytes = strlen(data);
+    packet->header.checksum = calcChecksum((void*)packet, PacketSize);
 
-	sendDatagram(pTemp);
+    // printHeader(packet->header);
+    // printf("\nData:\n %s\n", packet->data);
+
+    return 5;
+
+}
+
+void GoBackNProtocol::sendPackets(Packet * packet, char * data) {
+
+    int sent_accum = 0, data_sent = 0, sent = 0;
+    char * block_data;
+    time_t start, end;
+    double rtt, avg_response_rate = 0.0;
+    block_data = (char *)malloc(BLOCKSIZE);
+    // printf("%d\n", strlen(data));
+    while(sent_accum < strlen(data)) {
+
+        memset(block_data, 0, BLOCKSIZE);
+        // break data into BLOCKSIZE pieces
+        if(sent_accum == 0)
+            strncpy(block_data, data, BLOCKSIZE);
+        else
+            strncpy(block_data, (data+sent_accum), BLOCKSIZE);
+
+        start = clock();
+        data_sent = sendPacket(packet, block_data);
+        end = clock();
+        rtt = double(end-start)/CLOCKS_PER_SEC;
+        printf("Round trip time: %f\n", rtt);
+        avg_response_rate += rtt;
+
+        sent_accum += data_sent;
+
+        sent++;
+
+    }
+
+    avg_response_rate /= double(sent);
+    printf("Average response rate: %f\n", avg_response_rate);
+
+    free(block_data);
+
+}
+
+int GoBackNProtocol::addToWindow(Packet * packet) {
+
+    Packet * pTemp;
+    memcpy(pTemp, packet, PacketSize);
+
+    pTemp->header.sequenceNumber = current_seqn;
+    memcpy(window[current_seqn], pTemp, PacketSize);
+    current_seqn = MOD(current_seqn+1, N);
+    num_active++;
+
+    return sendPacket(pTemp);
 
 }
 
 bool GoBackNProtocol::canAddToWindow() {
-	//printf("current_seqn %i last_accked_seqn %i, num_active(%i)", current_seqn, last_acked_seqn, num_active);
-	return num_active < N;
+
+    printf("current_seqn: %i last_acked_seqn: %i, num_active(%i)\n", current_seqn, last_acked_seqn, num_active);
+
+    return num_active < N;
+
 }
 
 bool GoBackNProtocol::windowEmpty() {
-	//printf("last_acked_seqn %i  == LAST_SENT_SEQN %i\n", last_acked_seqn, LAST_SENT_SEQN);
-	return last_acked_seqn == LAST_SENT_SEQN;
+
+    printf("last_acked_seqn %i  == LAST_SENT_SEQN %i\n", last_acked_seqn, LAST_SENT_SEQN);
+
+    return last_acked_seqn == LAST_SENT_SEQN;
+
 }
 
 void GoBackNProtocol::resendWindow() {
-	int num_sending;
 
-	num_sending = num_active;
-	printf("\tresending %i datagrams\n", num_active);
+    int num_sending;
+    num_sending = num_active;
+    printf("\tresending %i packets\n", num_active);
 
-	for (int i = 1; i <= num_sending; i++) {
-		int current = MOD(last_acked_seqn + i, N);
-		printf("\t");
-		sendDatagram(window[current]);
-	}
+    for( int i = 1; i <= num_sending; i++) {
+
+        int current = MOD(last_acked_seqn+i, N);
+        printf("\t");
+        sendPacket(window[current]);
+
+    }
+
 }
 
-int GoBackNProtocol::sendMessage(char* line, unsigned int t) {
-	if (c == NULL) {
-		throw std::exception();
-	}
+int GoBackNProtocol::sendMessage(Packet * packets[], int amount_of_packets) {
 
-	int current_byte = 0;
-	/* loop while we have more to send or are still waiting
-		on outstanding ACKs */
-	while (!windowEmpty() || current_byte < t) {
+    if(c == NULL)
+        throw std::exception();
 
-		/* send as many as we can*/
-		//while (last_sent_seqn )
-		while (canAddToWindow() && current_byte < t) {
-			addToWindow(line[current_byte]);
-			current_byte++;
-		} 
+    /*
+    loop while we have more to send or are still waiting for outstanding ACKs
+    */
+    int packets_in_window = 0;
+    printHeader(packets[packets_in_window]->header);
+    // printf("Total Bytes to send: %d\n", packets[packets_in_window]->header.nTotalBytes);
+    Packet * pTemp;
+    pTemp = (Packet *)malloc(PacketSize);
 
-		/* listen */
-		if (!acceptAcks()) {
-			/* our listen timed out, resend the entire window */
-			resendWindow();
-		}
-	}
+    while(!windowEmpty() || packets_in_window < amount_of_packets) {
 
-	printf("WINDOW EMPTY & ALL BYTES SENT\n");
+        // fill the window so we can send as much as possible
+        while(canAddToWindow() && packets_in_window < amount_of_packets) {
+
+            pTemp->header = packets[packets_in_window]->header;
+            printHeader(pTemp->header);
+            addToWindow(packets[packets_in_window]);
+            ++packets_in_window;
+
+        }
+
+        // if timed out, resend window again
+        if(!acceptAcks())
+            resendWindow();
+
+    }
+
+    printf("WINDOW EMPTY & ALL PACKETS SENT\n");
+
+    return 0;
+
 }
 
 bool GoBackNProtocol::acceptAcks() {
-	bool didNotTimeout;
 
-	c->setTimeout(5);
-	didNotTimeout = listenForAck();
-	c->setTimeout(0);
+    bool didNotTimeout;
 
-	return didNotTimeout;
+    c->setTimeout(5);
+    didNotTimeout = listenForAck();
+    c->setTimeout(0);
+
+    return didNotTimeout;
+
 }
 
 void GoBackNProtocol::removeFromWindow(int mesg_seqn) {
-	//delete
-	int num_deleting;
 
-	num_deleting = MOD(mesg_seqn - last_acked_seqn, N);
-	//printf("num_deleting %i\n", num_deleting);
+    int num_deleting;
 
-	if (num_deleting > 0) {
-		printf("\nRECEIVED: ACK %i\n", mesg_seqn);
-	}
+    num_deleting = MOD(mesg_seqn - last_acked_seqn, N);
+    printf("num_deleting %i\n", num_deleting);
 
-	for (int i = 1; i <= num_deleting; i++) {
-		int deleting = MOD(last_acked_seqn + i, N);
-		delete window[deleting];
-		num_active--;
-		printf("\tdeleting %i from window\n", deleting);
-	}
+    if(num_deleting > 0)
+        printf("\nRECEIVED: ACK %i\n", mesg_seqn);
 
-	last_acked_seqn = mesg_seqn;
+    for(int i = 1; i <= num_deleting; i++ ) {
+
+        int deleting = MOD(last_acked_seqn+i, N);
+        free(window[deleting]);
+        num_active--;
+        printf("\tdeleting %i from window\n", deleting);
+
+    }
+
+    last_acked_seqn = mesg_seqn;
+
 }
 
-bool GoBackNProtocol::parseValidAck(int *ack_seqn, char* data_in) {
-	char whitespace_char;
+bool GoBackNProtocol::parseValidAck(int *ack_seqn, Packet * p) {
 
-	//printf("Parsing: '%s'\n", data_in);
-	if (!sscanf(data_in, ACK_IDENT"%c%d", &whitespace_char, ack_seqn)) {
-		return false;
-	}
+    if(calcChecksum((void *)p, PacketSize) != 0 || *ack_seqn < 0 || *ack_seqn >= N)
+        return false;
 
-	if (!whitespace_char == ' ' || *ack_seqn < 0 || *ack_seqn >= N) {
-		return false;
-	}
+    return true;
 
-	return true;
-} 
+}
 
 bool GoBackNProtocol::listenForAck() {
-	int mesg_seqn;
 
-	/* listen for an incoming datagram, stop if it times out */
-	if (c->blocking_receive(buffer) == -1) {
-		printf("TIMEOUT\n");
-		return false;
-	}
+    int mesg_seqn;
 
-	/* we got something, validate it */
-	if (!parseValidAck(&mesg_seqn, buffer)) {
-		printf("\tBAD ACK '%s', RELISTENING\n", buffer);
+    //listen for incoming packets, stop if it times out
+    if( c->blocking_receive(buffer) == -1 ) {
 
-		/* this ACK is invalid, reset our timeout and try again */
-		return listenForAck();
-	}
+        printf("TIMED OUT\n");
+        return false;
 
-	/* server ACKed mesq_seqn, update our window */
-	removeFromWindow(mesg_seqn);
+    }
 
-	return true;
+    // we got a packet, validate it
+    if(!parseValidAck(&mesg_seqn, buffer)) {
+
+        printf("\tBAD ACK ");
+        printHeader(buffer->header);
+        printf(", RELISTENING\n");
+
+        //ACK invalid reset timeout
+        return listenForAck();
+
+    }
+
+    // server ACKed mesg_seqn, update window
+    removeFromWindow(mesg_seqn);
+
+    return true;
+
 }
 
-void GoBackNProtocol::sendAck(int seqn) {
-	last_sent_ackn = seqn;
+bool GoBackNProtocol::parseValidDatagram(int * datagram_seqn, Packet * data_in) {
 
-	sprintf(buffer, ACK_IDENT" %i", seqn);
-	c->send(buffer, strlen(buffer));
+    if(calcChecksum((void *)data_in, PacketSize) != 0)
+        return false;
+
+    datagram_seqn = &data_in->header.sequenceNumber;
+    if(*datagram_seqn != expected_seqn)
+        return false;
+
+    return true;
+
 }
 
-bool GoBackNProtocol::parseValidDatagram(int *datagram_seqn, char *payload, char* data_in) {
-	char whitespace_char, in_byte, whitespace_char2;
+void GoBackNProtocol::sendAck(CS450Header header, int seqn) {
 
-	printf("Parsing: '%s'\n", data_in);
-	if (!sscanf(data_in, DATAGRAM_IDENT"%c%d%c%c", &whitespace_char, datagram_seqn, &whitespace_char2, payload)) {
-		return false;
-	}
+    Packet * packet;
 
-	if (!whitespace_char == ' ' || !whitespace_char2 == ' ' || *datagram_seqn < 0 || *datagram_seqn >= N) {
-		return false;
-	}
+    char * to_IP, * from_IP;
+    to_IP = printIP(header.from_IP);
+    from_IP = printIP(header.to_IP);
 
-	if (*datagram_seqn != expected_seqn) {
-		return false;
-	}
+    packet = makePacket(to_IP, from_IP, header.filename, header.to_Port, header.from_Port, 2, 0, header.nTotalBytes);
 
-	return true;
+    packet->header.transactionNumber = header.transactionNumber;
+    packet->header.ackNumber = 1;
+    packet->header.sequenceNumber = seqn;
+    packet->header.checksum = calcChecksum((void*)packet, PacketSize);
+
+    printHeader(packet->header);
+
+    c->send(packet, PacketSize);
+
+    free(to_IP);
+    free(from_IP);
+    free(packet);
+
 }
 
-char* GoBackNProtocol::receiveMessage() {
-	int datagram_seqn;
-	char payload;
+Packet* GoBackNProtocol::receiveMessage() {
 
-	if (c == NULL) {
-		throw std::exception();
-	}
+    int datagram_seqn;
 
-	while (c->blocking_receive(buffer) != -1) {
-		if (parseValidDatagram(&datagram_seqn, &payload, buffer)) {
-			expected_seqn = MOD(expected_seqn + 1, N);
-			printf("got payload of %c\n", payload);
-			sendAck(datagram_seqn);
-		} else {
-			sendAck(last_sent_ackn);
-		}
-	}
+    if(c == NULL)
+        throw std::exception();
 
-	return buffer;
+    while(c->blocking_receive(buffer) != -1) {
+
+        if(parseValidDatagram(&datagram_seqn, buffer)) {
+
+            expected_seqn = MOD(expected_seqn+1, N);
+            printf("Got payload %i\n", datagram_seqn);
+            printHeader(buffer->header);
+            printf("\n");
+            sendAck(buffer->header, datagram_seqn);
+
+        }
+        else
+            sendAck(buffer->header, last_sent_ackn);
+
+    }
+
+    return buffer;
+
 }

@@ -2,8 +2,9 @@
 #define _COMMON_H
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include "450UtilsUDP.h"
 
-#define DEFAULT_PORT 12346
+#define DEFAULT_PORT 54323
 #define BUF_SIZE 4096
 
 /* Abstract connection that defines the necessary socket i/o functions.
@@ -22,7 +23,7 @@ public:
 	/* block until a message can be found or the timeout is reached
 		message is copyed to the memory pointed to by return_buf
 		-1 should be returned if an error occurs */
-	virtual int blocking_receive(char* return_buf) = 0;
+	virtual int blocking_receive(Packet * return_buf) = 0;
 };
 
 
@@ -41,10 +42,10 @@ public:
 
 	/* send a message of size t starting at the memory address pointed to by line
 		through the implememted protocol */
-	virtual int sendMessage(char* line, unsigned int t) = 0;
+	virtual int sendMessage(Packet * packet[], int amount_of_packets) = 0;
 
 	/* receive a message through the implemented protocol */
-	virtual char* receiveMessage() = 0;
+	virtual Packet * receiveMessage() = 0;
 };
 
 #endif

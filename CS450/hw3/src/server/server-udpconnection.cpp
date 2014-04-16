@@ -11,7 +11,7 @@ ServerUDPConnection::ServerUDPConnection(int port) {
 }
 
 int ServerUDPConnection::onSocketCreated() {
-	if (bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
+	if (::bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
 		perror("server: can't bind local address");
 		return -1;
 	}

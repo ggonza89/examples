@@ -15,6 +15,7 @@ UDPConnection::UDPConnection() : servaddr {0}, cliaddr{0}{
 }
 
 int UDPConnection::connect() {
+
 	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("can't open datagram socket");
 		return -1;
@@ -36,15 +37,19 @@ void UDPConnection::setTimeout(int secs) {
 }
 
 int UDPConnection::send(const void *message, unsigned int length) {
-	sendto(sockfd, message, length, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
-	//printf("UDPConnection send\n");
+
+	int data_sent = sendto(sockfd, message, length, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+	printf("UDPConnection send\n");
+
+	return data_sent;
+
 }
 
-int UDPConnection::blocking_receive(char* return_buf) {
-	datalen = recvfrom(sockfd, mesg, BUF_SIZE, 0, (struct sockaddr *)&servaddr, &addrlen);
+int UDPConnection::blocking_receive(Packet * return_buf) {
 
+	datalen = recvfrom(sockfd, mesg, BUF_SIZE, 0, (struct sockaddr *)&servaddr, &addrlen);
+	printf("UDPConnection receive got %i bytes\n", datalen);
 	memcpy(return_buf, mesg, BUF_SIZE);
-	//printf("UDPConnection receive got %i bytes\n", datalen);
 	return datalen;
 }
 

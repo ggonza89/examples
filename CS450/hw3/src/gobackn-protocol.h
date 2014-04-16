@@ -1,80 +1,83 @@
 #ifndef _GOBACKN_PROTOCOL_H
-#define _GOBACKN_PROTOCOL_H 
+#define _GOBACKN_PROTOCOL_H
 #include "common.h"
 
 #define N 10
-#define MAX_DATAGRAM_SIZE 256
 
 /* c/c++ % computes remainder, not modulo, the formula below
-	returns modulo. */
+    returns modulo. */
 #define MOD(x, m) (x%m + m)%m
 #define LAST_SENT_SEQN MOD(current_seqn - 1, N)
-
 
 #define DATAGRAM_IDENT "DATA"
 #define ACK_IDENT "ACK"
 
 
-/* Implementation of the Go-back-N protocol, N is a compile time constant set above. 
-	This implementation is bidirectional & maintains different sequence numbers for each 
-	direction of communication. */
+/* Implementation of the Go-back-N protocol, N is a compile time constant set above.
+    This implementation is bidirectional & maintains different sequence numbers for each
+    direction of communication. */
 class GoBackNProtocol : public Protocol {
-	private:
+private:
 
-		char buffer[BUF_SIZE]; //buffer used for incoming and outgoing messages
-		
-		/* client vars */
-		char* window[N]; //window of size N
-		int current_seqn; //sequence number to be assigned to the next packet
-		int last_acked_seqn; //last sequence number received from the server
-		int num_active; //number of active messages in the window
+    // char * data_received;
+    Packet * buffer; //buffer used for incoming and outgoing messages
 
-		/* server vars*/
-		int last_sent_ackn; //sequence number of last ACK
-		int expected_seqn; //next sequence number expected by the server
+    /* client vars */
+    Packet * window[N]; //window of size N
+    int current_seqn; //sequence number to be assigned to the next packet
+    int last_acked_seqn; //last sequence number received from the server
+    int num_active; //number of active messages in the window
 
-		/* use the underlying connection to send a message */
-		void sendDatagram(char* p);
+    /* server vars*/
+    int last_sent_ackn; //sequence number of last ACK
+    int expected_seqn; //next sequence number expected by the server
 
-		/* returns true if the window still has space to add a message */
-		bool canAddToWindow();
+    /*
+    Puts the datagram into a Packet
+    */
+    int sendPacket(Packet * packet);
+    int sendPacket(Packet * packet, char * data);
 
-		/* creates and adds a message containing the payload b to the window */
-		void addToWindow(char b) ;
+    /* returns true if the window still has space to add a message */
+    bool canAddToWindow();
 
-		/* returns true if no ACKs are outstanding */
-		bool windowEmpty();
+    /* creates and adds a message containing the payload b to the window */
+    int addToWindow(Packet * data);
 
-		/* listen for an ACK, returns true if the socket does not timeout */
-		bool acceptAcks() ;
+    /* returns true if no ACKs are outstanding */
+    bool windowEmpty();
 
-		/* helper function to set timeout to 5 seconds before listening for an ACK */
-		bool listenForAck();
+    /* listen for an ACK, returns true if the socket does not timeout */
+    bool acceptAcks() ;
 
-		/* returns true if string pointed to by data_in is a valid ACK
-			sets ack_seqn to the parsed sequence number */
-		bool parseValidAck(int *ack_seqn, char* data_in);
+    /* helper function to set timeout to 5 seconds before listening for an ACK */
+    bool listenForAck();
 
-		/* returns true if the string pointed to by data_in is a valid DATA
-			sets memory pointed to by datagram_seqn & payload to the parsed seqn and payload */
-		bool parseValidDatagram(int *datagram_seqn, char *payload, char* data_in);
+    /* returns true if string pointed to by data_in is a valid ACK
+        sets ack_seqn to the parsed sequence number */
+    bool parseValidAck(int *ack_seqn, Packet * p);
 
-		/* remove mes_seqn from the window and free its memory */
-		void removeFromWindow(int mesg_seqn);
+    /* returns true if the string pointed to by data_in is a valid DATA
+        sets memory pointed to by datagram_seqn & payload to the parsed seqn and payload */
+    bool parseValidDatagram(int * datagram_seqn, Packet * data_in);
 
-		/* send an ACK containing sequence number seqn */
-		void sendAck(int seqn);
+    /* remove mes_seqn from the window and free its memory */
+    void removeFromWindow(int mesg_seqn);
 
-		/* resends all active message in the window */
-		void resendWindow();
+    /* send an ACK containing sequence number seqn */
+    void sendAck(CS450Header header, int seqn);
 
-	public:
-		GoBackNProtocol();
+    /* resends all active message in the window */
+    void resendWindow();
 
-		/* implementation of abstract Protocol::sendMessage */
-		virtual int sendMessage(char* line, unsigned int t);
-		/* implementation of abstract Protocol::receiveMessage */
-		virtual char* receiveMessage();
+public:
+    GoBackNProtocol();
+    void sendPackets(Packet * packet, char * data);
+
+    /* implementation of abstract Protocol::sendMessage */
+    virtual int sendMessage(Packet * packet[], int amount_of_packets);
+    /* implementation of abstract Protocol::receiveMessage */
+    virtual Packet * receiveMessage();
 };
 
 #endif

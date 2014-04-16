@@ -8,11 +8,11 @@
 class ServerUDPConnection : public UDPConnection {
 protected:
 	virtual int onSocketCreated();
-	
+
 public:
 	ServerUDPConnection();
 	ServerUDPConnection(int port);
 	virtual ~ServerUDPConnection();
 };
 
-#endif 
+#endif

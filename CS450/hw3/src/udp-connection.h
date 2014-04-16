@@ -5,7 +5,6 @@
 class UDPConnection : public Connection {
 protected:
 	int sockfd;
-	struct sockaddr_in servaddr, cliaddr;
 	unsigned int addrlen;
 
 	int datalen;
@@ -23,9 +22,10 @@ public:
 	virtual int connect();
 	virtual void setTimeout(int secs);
 	virtual int send(const void *message, unsigned int length);
-	virtual int blocking_receive(char* return_buf);
+	virtual int blocking_receive(Packet * return_buf);
 
 	virtual void dumpInfo();
+	struct sockaddr_in servaddr, cliaddr;
 };
 
 #endif
